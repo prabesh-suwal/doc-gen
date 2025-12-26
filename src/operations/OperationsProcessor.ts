@@ -6,6 +6,9 @@ export interface OperationConfig {
     conditionalBlocks?: Record<string, boolean>;
     formatting?: Record<string, unknown>;
     computed?: Record<string, string>;
+    tablePageBreaking?: boolean;
+    longTableSplit?: boolean;
+    repeatTableHeader?: boolean;  // Default: false (don't repeat header on split pages)
 }
 
 export interface ProcessedData {

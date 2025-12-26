@@ -47,6 +47,11 @@ const elements = {
     formatJsonBtn: document.getElementById('format-json'),
     jsonError: document.getElementById('json-error'),
 
+    // Operations
+    tablePageBreaking: document.getElementById('table-page-breaking'),
+    longTableSplit: document.getElementById('long-table-split'),
+    repeatTableHeader: document.getElementById('repeat-table-header'),
+
     // Render
     renderBtn: document.getElementById('render-btn'),
 
@@ -308,6 +313,13 @@ elements.renderBtn.addEventListener('click', async () => {
     // Get output format
     const outputFormat = document.querySelector('input[name="output-format"]:checked').value;
 
+    // Collect operations
+    const operations = {
+        tablePageBreaking: elements.tablePageBreaking?.checked || false,
+        longTableSplit: elements.longTableSplit?.checked || false,
+        repeatTableHeader: elements.repeatTableHeader?.checked || false
+    };
+
     // Show loading
     showLoading('Generating document...');
 
@@ -319,6 +331,7 @@ elements.renderBtn.addEventListener('click', async () => {
             const formData = new FormData();
             formData.append('template', state.selectedFile);
             formData.append('data', JSON.stringify(data));
+            formData.append('operations', JSON.stringify(operations));
             formData.append('result', outputFormat);
 
             response = await fetch(`${API_BASE}/api/render`, {
@@ -334,6 +347,7 @@ elements.renderBtn.addEventListener('click', async () => {
                 },
                 body: JSON.stringify({
                     data,
+                    operations,
                     result: outputFormat,
                 }),
             });

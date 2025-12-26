@@ -75,18 +75,21 @@ router.post('/', upload.single('template'), async (req: Request, res: Response, 
         }
 
         // Parse request body (may be JSON string or form field)
+
+        logger.info(`req.body.operation ${req.body.operations} `);
+
         let requestData;
         if (typeof req.body.data === 'string') {
             requestData = {
                 data: JSON.parse(req.body.data),
                 result: req.body.result || 'docx',
-                operation: req.body.operation ? JSON.parse(req.body.operation) : undefined,
+                operation: req.body.operations ? JSON.parse(req.body.operations) : undefined,
             };
         } else {
             requestData = RenderRequestSchema.parse({
                 data: req.body.data || {},
                 result: req.body.result || 'docx',
-                operation: req.body.operation,
+                operation: req.body.operations,
             });
         }
 
@@ -113,6 +116,7 @@ router.post('/', upload.single('template'), async (req: Request, res: Response, 
         // Render template
         const renderResult = await templateEngine.render(templateZip, {
             data: processed.data,
+            operations: processed.operations as Record<string, unknown>,
         });
 
         // Convert to requested format
@@ -180,6 +184,7 @@ router.post('/:templateId', async (req: Request, res: Response, next: NextFuncti
         // Render template
         const renderResult = await templateEngine.render(templateZip, {
             data: processed.data,
+            operations: processed.operations as Record<string, unknown>,
         });
 
         // Convert to requested format

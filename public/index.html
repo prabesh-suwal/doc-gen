@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Sidebar -->
@@ -23,7 +25,7 @@
                 </div>
                 <span class="logo-text">DocGen</span>
             </div>
-            
+
             <nav class="nav-menu">
                 <a href="#" class="nav-item active" data-view="render">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -46,7 +48,7 @@
                     <span>Documentation</span>
                 </a>
             </nav>
-            
+
             <div class="sidebar-footer">
                 <div class="status-indicator">
                     <span class="status-dot"></span>
@@ -76,7 +78,7 @@
                                 <button class="toggle-btn" data-mode="select">Select</button>
                             </div>
                         </div>
-                        
+
                         <!-- Upload Mode -->
                         <div id="upload-mode" class="template-mode active">
                             <div class="dropzone" id="dropzone">
@@ -125,7 +127,8 @@
                         <div class="card-header">
                             <h2>JSON Data</h2>
                             <button class="btn btn-ghost" id="format-json">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"
+                                    height="16">
                                     <polyline points="4 7 4 4 20 4 20 7"></polyline>
                                     <line x1="9" y1="20" x2="15" y2="20"></line>
                                     <line x1="12" y1="4" x2="12" y2="20"></line>
@@ -146,6 +149,50 @@ Example:
 }'></textarea>
                         </div>
                         <div class="json-error" id="json-error" hidden></div>
+                    </section>
+
+                    <!-- Operations Section -->
+                    <section class="card operations-section">
+                        <div class="card-header">
+                            <h2>Operations</h2>
+                        </div>
+                        <div class="operations-content">
+                            <!-- Table Operations -->
+                            <div class="operation-group">
+                                <h3 class="operation-group-title">Table</h3>
+                                <div class="operation-items">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="table-page-breaking" />
+                                        <span class="toggle-slider"></span>
+                                        <div class="toggle-label">
+                                            <span class="toggle-name">Table Page Breaking</span>
+                                            <span class="toggle-desc">Add page breaks before tables to prevent
+                                                splitting</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="long-table-split" />
+                                        <span class="toggle-slider"></span>
+                                        <div class="toggle-label">
+                                            <span class="toggle-name">Allow Long Table Split</span>
+                                            <span class="toggle-desc">Allow tables longer than 1 page to split across
+                                                pages</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="repeat-table-header" />
+                                        <span class="toggle-slider"></span>
+                                        <div class="toggle-label">
+                                            <span class="toggle-name">Repeat Table Header</span>
+                                            <span class="toggle-desc">Show table header on each page when table
+                                                splits</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
                     </section>
 
                     <!-- Output Section -->
@@ -246,8 +293,10 @@ Example:
                 <div class="docs-content">
                     <section class="card">
                         <h2>Template Syntax</h2>
-                        <p>Templates use curly braces syntax similar to Carbone.io. Data is accessed with the <code>d.</code> prefix.</p>
-                        
+                        <p>Templates use curly braces syntax similar to Carbone.io. Data is accessed with the
+                            <code>d.</code> prefix.
+                        </p>
+
                         <div class="docs-table">
                             <table>
                                 <thead>
@@ -415,4 +464,5 @@ Example:
 
     <script src="app.js"></script>
 </body>
+
 </html>

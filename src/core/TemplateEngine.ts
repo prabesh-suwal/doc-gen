@@ -16,6 +16,7 @@ import { TemplateRenderError } from '../utils/errors.js';
 import { registerFormatter, FormatterFunction } from '../features/Formatters.js';
 import { registerAggregation, AggregationFunction } from '../features/Aggregations.js';
 import { TemplateProcessor } from '../engine/TemplateProcessor.js';
+import { TablePageBreaker } from '../operations/TablePageBreaker.js';
 
 export interface RenderOptions {
     data: Record<string, unknown>;
@@ -33,9 +34,11 @@ export interface RenderResult {
  */
 export class TemplateEngine {
     private templateProcessor: TemplateProcessor;
+    private tablePageBreaker: TablePageBreaker;
 
     constructor() {
         this.templateProcessor = new TemplateProcessor();
+        this.tablePageBreaker = new TablePageBreaker();
     }
 
     /**
@@ -79,13 +82,28 @@ export class TemplateEngine {
                 const file = zip.file(filename);
                 if (!file) continue;
 
-                const content = file.asText();
+                let content = file.asText();
 
-                // Process the content
+                // Process the content with template processor
                 const result = this.templateProcessor.process(content, options.data);
+                content = result.content;
+
+                logger.info(`options.operations?.tablePageBreaking ${options.operations?.tablePageBreaking} `);
+
+                // Apply table operations (page breaking and/or header repetition)
+                // Even if tablePageBreaking is false, we may need to process header repetition
+                if (filename === 'word/document.xml' && options.operations) {
+                    if (options.operations.tablePageBreaking) {
+                        logger.info('Applying table page breaking...');
+                    }
+                    content = this.tablePageBreaker.processDocument(
+                        content,
+                        options.operations as any
+                    );
+                }
 
                 // Update the zip file
-                zip.file(filename, result.content);
+                zip.file(filename, content);
 
                 // Collect warnings
                 warnings.push(...result.warnings);

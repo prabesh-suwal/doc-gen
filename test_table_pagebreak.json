@@ -1,0 +1,285 @@
+{
+    "loan": {
+        "agreementNumber": "HBL/AUTO/2025/001234",
+        "principalAmount": 3500000
+    },
+    "shortPayments": [
+        {
+            "month": 1,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 2,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 3,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 4,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 5,
+            "amount": 5000,
+            "status": "paid"
+        }
+    ],
+    "longPayments": [
+        {
+            "month": 1,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 2,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 3,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 4,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 5,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 6,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 7,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 8,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 9,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 10,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 11,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 12,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 13,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 14,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 15,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 16,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 17,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 18,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 19,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 20,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 21,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 22,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 23,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 24,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 25,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 26,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 27,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 28,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 29,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 30,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 31,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 32,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 33,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 34,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 35,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 36,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 37,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 38,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 39,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 40,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 41,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 42,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 43,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 44,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 45,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 46,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 47,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 48,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 49,
+            "amount": 5000,
+            "status": "paid"
+        },
+        {
+            "month": 50,
+            "amount": 5000,
+            "status": "paid"
+        }
+    ]
+}
