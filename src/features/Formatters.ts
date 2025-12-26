@@ -8,6 +8,59 @@ dayjs.extend(advancedFormat);
 export type FormatterFunction = (value: unknown, ...args: unknown[]) => unknown;
 
 /**
+ * Helper function: Convert a number to roman numerals
+ */
+function toRomanNumeral(num: number, uppercase: boolean = false): string {
+    if (num < 1 || num > 3999) return String(num);
+
+    const romanNumerals = [
+        { value: 1000, numeral: 'M' },
+        { value: 900, numeral: 'CM' },
+        { value: 500, numeral: 'D' },
+        { value: 400, numeral: 'CD' },
+        { value: 100, numeral: 'C' },
+        { value: 90, numeral: 'XC' },
+        { value: 50, numeral: 'L' },
+        { value: 40, numeral: 'XL' },
+        { value: 10, numeral: 'X' },
+        { value: 9, numeral: 'IX' },
+        { value: 5, numeral: 'V' },
+        { value: 4, numeral: 'IV' },
+        { value: 1, numeral: 'I' },
+    ];
+
+    let result = '';
+    let remaining = num;
+
+    for (const { value, numeral } of romanNumerals) {
+        while (remaining >= value) {
+            result += numeral;
+            remaining -= value;
+        }
+    }
+
+    return uppercase ? result : result.toLowerCase();
+}
+
+/**
+ * Helper function: Convert a number to alphabetic sequence (a, b, c, ..., z, aa, ab, ...)
+ */
+function toAlphabetic(num: number, uppercase: boolean = false): string {
+    if (num < 0) return String(num);
+
+    let result = '';
+    let n = num;
+
+    while (n >= 0) {
+        result = String.fromCharCode(65 + (n % 26)) + result;
+        n = Math.floor(n / 26) - 1;
+        if (n < 0) break;
+    }
+
+    return uppercase ? result : result.toLowerCase();
+}
+
+/**
  * Built-in formatters for the template engine
  */
 export const formatters: Record<string, FormatterFunction> = {
@@ -231,6 +284,62 @@ export const formatters: Record<string, FormatterFunction> = {
         } catch {
             return String(value);
         }
+    },
+
+    // ============= SEQUENTIAL NUMBERING =============
+
+    /**
+     * Sequential numbering formatter
+     * Usage:
+     *   ${$index|seq:1} → 1, 2, 3, 4... (numeric, default starts at 1)
+     *   ${$index|seq:a} → a, b, c, d... (lowercase alphabetic)
+     *   ${$index|seq:A} → A, B, C, D... (uppercase alphabetic)
+     *   ${$index|seq:i} → i, ii, iii, iv... (lowercase roman)
+     *   ${$index|seq:I} → I, II, III, IV... (uppercase roman)
+     */
+    seq: (value: unknown, type: unknown = '1'): string => {
+        const num = Number(value);
+        if (isNaN(num)) return String(value);
+
+        const typeStr = String(type);
+
+        switch (typeStr) {
+            case '1': // Numeric sequence starting from 1
+                return String(num + 1);
+            case 'a': // Lowercase alphabetic
+                return toAlphabetic(num, false);
+            case 'A': // Uppercase alphabetic
+                return toAlphabetic(num, true);
+            case 'i': // Lowercase roman numerals
+                return toRomanNumeral(num + 1, false);
+            case 'I': // Uppercase roman numerals
+                return toRomanNumeral(num + 1, true);
+            default:
+                // If type is a number, start from that number
+                const startNum = parseInt(typeStr, 10);
+                if (!isNaN(startNum)) {
+                    return String(num + startNum);
+                }
+                return String(num + 1);
+        }
+    },
+
+    // ============= FORMATTER ALIASES =============
+
+    /**
+     * Alias for formatDate
+     * Usage: {d.date|date:DD MMMM YYYY}
+     */
+    date: (value: unknown, format: unknown = 'YYYY-MM-DD'): string => {
+        return formatters.formatDate(value, format) as string;
+    },
+
+    /**
+     * Alias for formatNumber
+     * Usage: {d.amount|number:2}
+     */
+    number: (value: unknown, decimals: unknown = 2): string => {
+        return formatters.formatNumber(value, decimals) as string;
     },
 };
 

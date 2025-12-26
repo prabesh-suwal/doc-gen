@@ -1,0 +1,64 @@
+{
+    "items": [
+        {
+            "name": "First Item",
+            "value": 100
+        },
+        {
+            "name": "Second Item",
+            "value": 200
+        },
+        {
+            "name": "Third Item",
+            "value": 300
+        },
+        {
+            "name": "Fourth Item",
+            "value": 400
+        },
+        {
+            "name": "Fifth Item",
+            "value": 500
+        }
+    ],
+    "payments": [
+        {
+            "month": "January",
+            "amount": 5000,
+            "status": "completed"
+        },
+        {
+            "month": "February",
+            "amount": 15000,
+            "status": "pending"
+        },
+        {
+            "month": "March",
+            "amount": 150000,
+            "status": "completed"
+        },
+        {
+            "month": "April",
+            "amount": 500,
+            "status": "pending"
+        },
+        {
+            "month": "May",
+            "amount": 75000,
+            "status": "completed"
+        }
+    ],
+    "loan": {
+        "principalAmount": 350000,
+        "interestRate": 0.095,
+        "agreementDate": "2025-09-15T10:30:00Z",
+        "emiAmount": 5875.50
+    },
+    "borrower": {
+        "name": "John Doe",
+        "monthlyIncome": 125000
+    },
+    "testDate": "2025-12-26T16:40:00Z",
+    "testAmount": 12345.6789,
+    "testPercentage": 0.1234
+}

@@ -158,7 +158,7 @@ export class TemplateProcessor {
     }
 
     /**
-     * Process ${#if condition}...${/if} conditions
+     * Process ${#if condition}...${#elseif condition}...${#else}...${/if} conditions
      */
     private processConditions(content: string): string {
         const conditionStartRegex = /\$\{#if\s+([^}]+)\}/;
@@ -181,27 +181,139 @@ export class TemplateProcessor {
                 break;
             }
 
-            const conditionContent = afterStart.substring(0, endIndex);
+            const fullConditionBlock = afterStart.substring(0, endIndex);
             const beforeCondition = result.substring(0, startIndex);
             const afterCondition = result.substring(startIndex + startTag.length + endIndex + conditionEndMarker.length);
 
-            // Parse and evaluate the condition
-            const parsed = this.expressionEvaluator.parse('#if ' + conditionExpr);
-            const isTrue = parsed.condition
-                ? this.expressionEvaluator.evaluateCondition(parsed.condition, this.scopeManager)
-                : false;
+            // Parse the block to find elseif and else branches
+            const branches = this.parseConditionBranches(conditionExpr, fullConditionBlock);
 
-            if (isTrue) {
-                // Condition is true - keep content (but process it)
-                const processedContent = this.processBlocks(conditionContent);
+            // Evaluate branches in order and keep the first true one
+            let selectedContent = '';
+            let branchMatched = false;
+
+            for (const branch of branches) {
+                if (branch.type === 'else') {
+                    // Else branch - always matches if we get here
+                    selectedContent = branch.content;
+                    branchMatched = true;
+                    break;
+                } else {
+                    // If or elseif branch - evaluate condition
+                    const parsed = this.expressionEvaluator.parse('#if ' + branch.condition);
+                    const isTrue = parsed.condition
+                        ? this.expressionEvaluator.evaluateCondition(parsed.condition, this.scopeManager)
+                        : false;
+
+                    if (isTrue) {
+                        selectedContent = branch.content;
+                        branchMatched = true;
+                        break;
+                    }
+                }
+            }
+
+            // Process the selected content
+            if (branchMatched) {
+                const processedContent = this.processBlocks(selectedContent);
                 result = beforeCondition + processedContent + afterCondition;
             } else {
-                // Condition is false - remove content
+                // No branch matched - remove entire conditional block
                 result = beforeCondition + afterCondition;
             }
         }
 
         return result;
+    }
+
+    /**
+     * Parse a condition block into branches (if, elseif, else)
+     */
+    private parseConditionBranches(initialCondition: string, blockContent: string): Array<{
+        type: 'if' | 'elseif' | 'else';
+        condition: string;
+        content: string;
+    }> {
+        const branches: Array<{ type: 'if' | 'elseif' | 'else'; condition: string; content: string }> = [];
+
+        // Find all elseif and else tags at the same nesting level
+        const elseifRegex = /\$\{#elseif\s+([^}]+)\}/g;
+        const elseRegex = /\$\{#else\}/g;
+
+        const markers: Array<{ index: number; type: 'elseif' | 'else'; condition?: string }> = [];
+
+        // Find all elseif markers
+        let elseifMatch;
+        while ((elseifMatch = elseifRegex.exec(blockContent)) !== null) {
+            // Check if this elseif is at the same nesting level
+            const beforeMarker = blockContent.substring(0, elseifMatch.index);
+            if (this.isAtTopLevel(beforeMarker)) {
+                markers.push({
+                    index: elseifMatch.index,
+                    type: 'elseif',
+                    condition: elseifMatch[1].trim()
+                });
+            }
+        }
+
+        // Find else marker
+        let elseMatch;
+        elseRegex.lastIndex = 0; // Reset regex
+        while ((elseMatch = elseRegex.exec(blockContent)) !== null) {
+            const beforeMarker = blockContent.substring(0, elseMatch.index);
+            if (this.isAtTopLevel(beforeMarker)) {
+                markers.push({
+                    index: elseMatch.index,
+                    type: 'else'
+                });
+            }
+        }
+
+        // Sort markers by index
+        markers.sort((a, b) => a.index - b.index);
+
+        // Build branches
+        let currentPos = 0;
+
+        // First branch is always the initial if
+        const firstBranchEnd = markers.length > 0 ? markers[0].index : blockContent.length;
+        branches.push({
+            type: 'if',
+            condition: initialCondition,
+            content: blockContent.substring(currentPos, firstBranchEnd)
+        });
+
+        // Process each marker
+        for (let i = 0; i < markers.length; i++) {
+            const marker = markers[i];
+            const markerTag = marker.type === 'elseif'
+                ? `\$\{#elseif ${marker.condition}\}`
+                : '${#else}';
+            const markerEnd = marker.index + markerTag.length;
+
+            const nextMarkerStart = i + 1 < markers.length ? markers[i + 1].index : blockContent.length;
+            const branchContent = blockContent.substring(markerEnd, nextMarkerStart);
+
+            branches.push({
+                type: marker.type,
+                condition: marker.condition || '',
+                content: branchContent
+            });
+        }
+
+        return branches;
+    }
+
+    /**
+     * Check if we're at the top nesting level (no unclosed if/each blocks)
+     */
+    private isAtTopLevel(content: string): boolean {
+        const ifCount = (content.match(/\$\{#if\s+/g) || []).length;
+        const endIfCount = (content.match(/\$\{\/if\}/g) || []).length;
+        const eachCount = (content.match(/\$\{#each\s+/g) || []).length;
+        const endEachCount = (content.match(/\$\{\/each\}/g) || []).length;
+
+        return (ifCount === endIfCount) && (eachCount === endEachCount);
     }
 
     /**
