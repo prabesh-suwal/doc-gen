@@ -1,0 +1,34 @@
+{
+    "fees": [
+        {
+            "type": "Processing Fee",
+            "amount": 17500,
+            "percentage": 0.005,
+            "total": 17500
+        },
+        {
+            "type": "Documentation Fee",
+            "amount": 2500,
+            "percentage": null,
+            "total": 2500
+        },
+        {
+            "type": "Valuation Fee",
+            "amount": 5000,
+            "percentage": null,
+            "total": 5000
+        },
+        {
+            "type": "Legal Fee",
+            "amount": 7500,
+            "percentage": null,
+            "total": 7500
+        },
+        {
+            "type": "Insurance Premium",
+            "amount": 15000,
+            "percentage": null,
+            "total": 15000
+        }
+    ]
+}

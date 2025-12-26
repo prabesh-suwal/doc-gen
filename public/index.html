@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocGen - Document Template Engine</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                </div>
+                <span class="logo-text">DocGen</span>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-view="render">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    <span>Render</span>
+                </a>
+                <a href="#" class="nav-item" data-view="templates">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span>Templates</span>
+                </a>
+                <a href="#" class="nav-item" data-view="docs">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <span>Documentation</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span>API Connected</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Render View -->
+            <div id="render-view" class="view active">
+                <header class="view-header">
+                    <div>
+                        <h1>Render Document</h1>
+                        <p class="subtitle">Upload a template or select from saved templates, then provide your data</p>
+                    </div>
+                </header>
+
+                <div class="render-grid">
+                    <!-- Template Section -->
+                    <section class="card template-section">
+                        <div class="card-header">
+                            <h2>Template</h2>
+                            <div class="toggle-group">
+                                <button class="toggle-btn active" data-mode="upload">Upload</button>
+                                <button class="toggle-btn" data-mode="select">Select</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Upload Mode -->
+                        <div id="upload-mode" class="template-mode active">
+                            <div class="dropzone" id="dropzone">
+                                <div class="dropzone-content">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    <p>Drag & drop your DOCX template here</p>
+                                    <span>or</span>
+                                    <button class="btn btn-secondary" id="browse-btn">Browse Files</button>
+                                    <input type="file" id="file-input" accept=".docx" hidden>
+                                </div>
+                            </div>
+                            <div class="file-info" id="file-info" hidden>
+                                <div class="file-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="file-details">
+                                    <span class="file-name" id="file-name"></span>
+                                    <span class="file-size" id="file-size"></span>
+                                </div>
+                                <button class="btn-icon" id="remove-file">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Select Mode -->
+                        <div id="select-mode" class="template-mode">
+                            <div class="template-select-list" id="template-select-list">
+                                <p class="empty-state">Loading templates...</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Data Section -->
+                    <section class="card data-section">
+                        <div class="card-header">
+                            <h2>JSON Data</h2>
+                            <button class="btn btn-ghost" id="format-json">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                    <polyline points="4 7 4 4 20 4 20 7"></polyline>
+                                    <line x1="9" y1="20" x2="15" y2="20"></line>
+                                    <line x1="12" y1="4" x2="12" y2="20"></line>
+                                </svg>
+                                Format
+                            </button>
+                        </div>
+                        <div class="editor-wrapper">
+                            <textarea id="json-editor" placeholder='Enter your JSON data here...
+
+Example:
+{
+  "name": "John Doe",
+  "company": "Acme Inc",
+  "items": [
+    { "product": "Widget", "price": 10.00 }
+  ]
+}'></textarea>
+                        </div>
+                        <div class="json-error" id="json-error" hidden></div>
+                    </section>
+
+                    <!-- Output Section -->
+                    <section class="card output-section">
+                        <div class="card-header">
+                            <h2>Output</h2>
+                        </div>
+                        <div class="output-options">
+                            <label class="radio-card">
+                                <input type="radio" name="output-format" value="docx" checked>
+                                <div class="radio-content">
+                                    <div class="format-icon docx">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                        </svg>
+                                    </div>
+                                    <span class="format-name">DOCX</span>
+                                    <span class="format-desc">Word Document</span>
+                                </div>
+                            </label>
+                            <label class="radio-card">
+                                <input type="radio" name="output-format" value="pdf">
+                                <div class="radio-content">
+                                    <div class="format-icon pdf">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                        </svg>
+                                    </div>
+                                    <span class="format-name">PDF</span>
+                                    <span class="format-desc">Portable Document</span>
+                                </div>
+                            </label>
+                            <label class="radio-card">
+                                <input type="radio" name="output-format" value="html">
+                                <div class="radio-content">
+                                    <div class="format-icon html">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="16 18 22 12 16 6"></polyline>
+                                            <polyline points="8 6 2 12 8 18"></polyline>
+                                        </svg>
+                                    </div>
+                                    <span class="format-name">HTML</span>
+                                    <span class="format-desc">Web Page</span>
+                                </div>
+                            </label>
+                        </div>
+                        <button class="btn btn-primary btn-large" id="render-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            Generate Document
+                        </button>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Templates View -->
+            <div id="templates-view" class="view">
+                <header class="view-header">
+                    <div>
+                        <h1>Saved Templates</h1>
+                        <p class="subtitle">Manage your uploaded document templates</p>
+                    </div>
+                    <button class="btn btn-primary" id="upload-template-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Upload Template
+                    </button>
+                </header>
+
+                <div class="templates-grid" id="templates-grid">
+                    <!-- Templates will be loaded here -->
+                </div>
+
+                <div class="empty-state-large" id="empty-templates" hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <h3>No templates yet</h3>
+                    <p>Upload your first DOCX template to get started</p>
+                    <button class="btn btn-primary" id="upload-first-btn">Upload Template</button>
+                </div>
+            </div>
+
+            <!-- Documentation View -->
+            <div id="docs-view" class="view">
+                <header class="view-header">
+                    <div>
+                        <h1>Documentation</h1>
+                        <p class="subtitle">Learn how to use template syntax and API</p>
+                    </div>
+                </header>
+
+                <div class="docs-content">
+                    <section class="card">
+                        <h2>Template Syntax</h2>
+                        <p>Templates use curly braces syntax similar to Carbone.io. Data is accessed with the <code>d.</code> prefix.</p>
+                        
+                        <div class="docs-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Feature</th>
+                                        <th>Syntax</th>
+                                        <th>Example</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Variable</td>
+                                        <td><code>{d.fieldName}</code></td>
+                                        <td><code>{d.name}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Nested Property</td>
+                                        <td><code>{d.object.property}</code></td>
+                                        <td><code>{d.user.address.city}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Loop</td>
+                                        <td><code>{#d.array}...{/d.array}</code></td>
+                                        <td><code>{#d.items}{d.name}{/d.items}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Condition</td>
+                                        <td><code>{#d.flag}...{/d.flag}</code></td>
+                                        <td><code>{#d.isActive}Active{/d.isActive}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Formatter</td>
+                                        <td><code>{d.value:formatter()}</code></td>
+                                        <td><code>{d.date:formatDate('YYYY-MM-DD')}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Aggregation</td>
+                                        <td><code>{d.array:agg('field')}</code></td>
+                                        <td><code>{d.items:sum('price')}</code></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <h2>Available Formatters</h2>
+                        <div class="formatter-grid">
+                            <div class="formatter-category">
+                                <h4>Date Formatters</h4>
+                                <ul>
+                                    <li><code>formatDate(format)</code> - Format date</li>
+                                    <li><code>addDays(n)</code> - Add days</li>
+                                    <li><code>relativeTime()</code> - Relative time</li>
+                                </ul>
+                            </div>
+                            <div class="formatter-category">
+                                <h4>Number Formatters</h4>
+                                <ul>
+                                    <li><code>formatNumber(decimals)</code> - Decimal places</li>
+                                    <li><code>currency(symbol)</code> - Currency format</li>
+                                    <li><code>percentage()</code> - Percentage</li>
+                                    <li><code>thousands()</code> - Thousands separator</li>
+                                </ul>
+                            </div>
+                            <div class="formatter-category">
+                                <h4>Text Formatters</h4>
+                                <ul>
+                                    <li><code>upperCase()</code> - UPPERCASE</li>
+                                    <li><code>lowerCase()</code> - lowercase</li>
+                                    <li><code>capitalize()</code> - Capitalize</li>
+                                    <li><code>truncate(n)</code> - Truncate text</li>
+                                </ul>
+                            </div>
+                            <div class="formatter-category">
+                                <h4>Aggregations</h4>
+                                <ul>
+                                    <li><code>sum(field)</code> - Sum values</li>
+                                    <li><code>count()</code> - Count items</li>
+                                    <li><code>avg(field)</code> - Average</li>
+                                    <li><code>min(field)</code> / <code>max(field)</code></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <h2>API Endpoints</h2>
+                        <div class="api-list">
+                            <div class="api-item">
+                                <span class="method post">POST</span>
+                                <code>/api/render</code>
+                                <span class="desc">One-time render with template upload</span>
+                            </div>
+                            <div class="api-item">
+                                <span class="method post">POST</span>
+                                <code>/api/render/:templateId</code>
+                                <span class="desc">Render from stored template</span>
+                            </div>
+                            <div class="api-item">
+                                <span class="method post">POST</span>
+                                <code>/api/templates</code>
+                                <span class="desc">Upload and save a template</span>
+                            </div>
+                            <div class="api-item">
+                                <span class="method get">GET</span>
+                                <code>/api/templates</code>
+                                <span class="desc">List all saved templates</span>
+                            </div>
+                            <div class="api-item">
+                                <span class="method get">GET</span>
+                                <code>/api/templates/:id</code>
+                                <span class="desc">Get template details</span>
+                            </div>
+                            <div class="api-item">
+                                <span class="method delete">DELETE</span>
+                                <code>/api/templates/:id</code>
+                                <span class="desc">Delete a template</span>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Upload Modal -->
+    <div class="modal-overlay" id="upload-modal" hidden>
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Upload Template</h2>
+                <button class="btn-icon modal-close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="dropzone" id="modal-dropzone">
+                    <div class="dropzone-content">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <p>Drag & drop your DOCX template here</p>
+                        <span>or</span>
+                        <button class="btn btn-secondary" id="modal-browse-btn">Browse Files</button>
+                        <input type="file" id="modal-file-input" accept=".docx" hidden>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay" hidden>
+        <div class="spinner"></div>
+        <p id="loading-text">Generating document...</p>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

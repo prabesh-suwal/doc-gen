@@ -1,0 +1,248 @@
+{
+  "branch": {
+    "name": "New Road"
+  },
+
+  "loan": {
+    "requestDate": "2081-02-10",
+    "approvedDate": "2081-02-18",
+    "amount": "5,000,000",
+    "amountInWords": "पाँच करोड रूपैयाँ"
+  },
+
+  "customer": [
+    {
+      "type": "Individual",
+      "nameNepali": "शिव नारायण चौधरी",
+      "name": "Shiva Narayan Chaudhary",
+      "dob": "2049-05-12",
+      "gender": "पुरुष",
+      "mobile": "9841234567",
+      "permAddress": "बर्दिया जिल्ला, ठाकुरबाबा नगरपालिका–५",
+      "tempAddress": "काठमाण्डौ महानगरपालिका–१६, बालाजु",
+      "citizenshipNum": "01-02-78-12345",
+      "citizenshipIssueDate": "2067-03-15",
+      "citizenshipIssuePlace": "जि.प्र.का., बर्दिया",
+      "symbolNum": "123456789",
+      "spouseName": "सिता चौधरी",
+      "fatherName": "रामप्रसाद चौधरी",
+      "motherName": "कमला चौधरी",
+      "grandFatherName": "हरिलाल चौधरी",
+      "grandMotherName": "लक्ष्मी चौधरी"
+    }
+  ],
+
+  "collateral": [
+    {
+      "type": "Land",
+	  "malpotName": "काठमाण्डौ",
+      "province": "बागमती",
+      "district": "काठमाण्डौ",
+      "localLevelName": "काठमाण्डौ महानगरपालिका",
+      "wardNo": "16",
+      "sheetNo": "12",
+      "kittaNo": "345",
+      "kittaNoInWords": "तीन सय पैँतालीस",
+      "khande": "क",
+      "area": "0-5-2-0",
+      "remarks": "आवासीय प्रयोजन",
+      "collateralOwner": {
+        "type": "Individual",
+        "nameNepali": "शिव नारायण चौधरी",
+        "name": "Shiva Narayan Chaudhary",
+        "dob": "2049-05-12",
+        "gender": "पुरुष",
+        "mobile": "9841234567",
+        "permAddress": "बर्दिया जिल्ला, ठाकुरबाबा नगरपालिका–५",
+        "tempAddress": "काठमाण्डौ महानगरपालिका–१६, बालाजु",
+        "citizenshipNum": "01-02-78-12345",
+        "citizenshipIssueDate": "2067-03-15",
+        "citizenshipIssuePlace": "जि.प्र.का., बर्दिया",
+        "symbolNum": "123456789",
+        "spouseName": "सिता चौधरी",
+        "fatherName": "रामप्रसाद चौधरी",
+        "motherName": "कमला चौधरी",
+        "grandFatherName": "हरिलाल चौधरी",
+        "grandMotherName": "लक्ष्मी चौधरी"
+      }
+    }
+  ],
+"topCustomers": [
+    {
+      "name": "Enterprise Solutions Ltd",
+      "joinDate": "2023-03-15",
+      "totalOrders": 24,
+      "lifetimeValue": 185000,
+      "lastOrder": "2025-08-28",
+      "isVIP": true,
+      "recentOrders": [
+        {
+          "id": "ORD-2025-078",
+          "amount": 15600,
+          "date": "2025-08-28",
+          "status": "Completed",
+          "details": [
+            {
+              "address": "Kathmandu"
+            },
+            {
+              "address": "Bagmati"
+            },
+            {
+              "address": "Nepal"
+            }
+          ]
+        },
+        {
+          "id": "ORD-2025-063",
+          "amount": 8900,
+          "date": "2025-08-15",
+          "status": "Completed",
+          "details": [
+            {
+              "address": "Lalitpur"
+            },
+            {
+              "address": "Bagmati"
+            },
+            {
+              "address": "Nepal"
+            }
+          ]
+        },
+        {
+          "id": "ORD-2025-051",
+          "amount": 12300,
+          "date": "2025-07-30",
+          "status": "Completed",
+          "details": [
+            {
+              "address": "Bhaktapur"
+            },
+            {
+              "address": "Bagmati"
+            },
+            {
+              "address": "Nepal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Global Tech Innovations",
+      "joinDate": "2022-11-08",
+      "totalOrders": 31,
+      "lifetimeValue": 225000,
+      "lastOrder": "2025-09-12",
+      "isVIP": true,
+      "recentOrders": [
+        {
+          "id": "ORD-2025-089",
+          "amount": 22000,
+          "date": "2025-09-12",
+          "status": "Shipped",
+          "details": [
+            {
+              "address": "Kathmandu"
+            },
+            {
+              "address": "Bagmati"
+            },
+            {
+              "address": "Nepal"
+            }
+          ]
+        },
+        {
+          "id": "ORD-2025-074",
+          "amount": 18500,
+          "date": "2025-08-22",
+          "status": "Completed",
+          "details": [
+            {
+              "address": "Pokhara"
+            },
+            {
+              "address": "Province 3"
+            },
+            {
+              "address": "Nepal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Digital Dynamics Corp",
+      "joinDate": "2024-01-20",
+      "totalOrders": 18,
+      "lifetimeValue": 142000,
+      "lastOrder": "2025-08-18",
+      "isVIP": false,
+      "recentOrders": [
+        {
+          "id": "ORD-2025-067",
+          "amount": 9800,
+          "date": "2025-08-18",
+          "status": "Completed",
+          "details": [
+            {
+              "address": "Kathmandu"
+            },
+            {
+              "address": "Bagmati"
+            },
+            {
+              "address": "Nepal"
+            }
+          ]
+        },
+        {
+          "id": "ORD-2025-055",
+          "amount": 13200,
+          "date": "2025-08-02",
+          "status": "Completed",
+          "details": [
+            {
+              "address": "Kathmandu"
+            },
+            {
+              "address": "Bagmati"
+            },
+            {
+              "address": "Nepal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Future Systems Inc",
+      "joinDate": "2023-07-12",
+      "totalOrders": 29,
+      "lifetimeValue": 198000,
+      "lastOrder": "2025-09-20",
+      "isVIP": true,
+      "recentOrders": [
+        {
+          "id": "ORD-2025-095",
+          "amount": 17800,
+          "date": "2025-09-20",
+          "status": "Processing",
+          "details": [
+            {
+              "address": "Kathmandu"
+            },
+            {
+              "address": "Bagmati"
+            },
+            {
+              "address": "Nepal"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
