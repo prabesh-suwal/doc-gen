@@ -1,5 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
+import { authenticate } from '../../auth/middleware.js';
+import auditService from '../../services/AuditService.js';
+import renderHistoryService from '../../services/RenderHistoryService.js';
 import config from '../../config/index.js';
 import TemplateStore from '../../storage/TemplateStore.js';
 import TemplateLoader from '../../core/TemplateLoader.js';
@@ -67,7 +70,7 @@ function getOutputInfo(format: string): { contentType: string; extension: string
 /**
  * POST /api/render - One-time render (template + data in single request)
  */
-router.post('/', upload.single('template'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', authenticate, upload.single('template'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         if (!req.file) {
             res.status(400).json({ error: 'No template file provided', code: 'MISSING_FILE' });
@@ -120,22 +123,97 @@ router.post('/', upload.single('template'), async (req: Request, res: Response, 
         });
 
         // Convert to requested format
-        let output;
-        const outputFormat = requestData.result || 'docx';
+        let outputBuffer: Buffer;
+        let outputInfo = getOutputInfo(requestData.result);
+        const outputDocx = renderResult.buffer;
 
-        switch (outputFormat) {
-            case 'pdf':
-                output = await pdfConverter.convert(renderResult.buffer, originalName);
-                break;
-            case 'html':
-                output = await htmlConverter.convert(renderResult.buffer, originalName);
-                break;
-            default:
-                output = docxOutput.output(renderResult.buffer, originalName);
+        const startTime = Date.now();
+        let renderHistoryId: string | null = null;
+        let errorMessage: string | undefined;
+
+        try {
+            if (requestData.result === 'pdf') {
+                outputBuffer = (await pdfConverter.convert(outputDocx, originalName)).buffer;
+            } else if (requestData.result === 'html') {
+                outputBuffer = (await htmlConverter.convert(outputDocx, originalName)).buffer;
+            } else {
+                outputBuffer = docxOutput.output(outputDocx, originalName).buffer;
+            }
+
+            const durationMs = Date.now() - startTime;
+
+            // Track render history (if authenticated)
+            if (req.user) {
+                const recordId = await renderHistoryService.createRenderRecord({
+                    userId: req.user.userId,
+                    // No templateId for one-time renders (template not stored)
+                    templateName: originalName,
+                    data: requestData.data,
+                    outputFormat: requestData.result,
+                });
+                renderHistoryId = recordId;
+
+                await renderHistoryService.updateRenderStatus(recordId, {
+                    status: 'success',
+                    fileSize: outputBuffer.length,
+                    durationMs,
+                });
+
+                // Audit log
+                await auditService.logAction({
+                    userId: req.user.userId,
+                    username: req.user.username,
+                    action: 'render_success',
+                    resourceType: 'render',
+                    resourceId: recordId,
+                    details: {
+                        render_type: 'one_time',
+                        source: req.user.role === 'api' ? 'api' : 'web',
+                        template: originalName,
+                        format: requestData.result,
+                        size: outputBuffer.length,
+                        duration: durationMs,
+                    },
+                    ipAddress: req.ip,
+                    userAgent: req.get('user-agent'),
+                });
+            }
+        } catch (conversionError) {
+            const durationMs = Date.now() - startTime;
+            errorMessage = conversionError instanceof Error ? conversionError.message : 'Unknown error';
+
+            // Track failed render
+            if (req.user && renderHistoryId) {
+                await renderHistoryService.updateRenderStatus(renderHistoryId, {
+                    status: 'failure',
+                    durationMs,
+                    errorMessage,
+                    errorStack: conversionError instanceof Error ? conversionError.stack : undefined,
+                });
+
+                // Audit log failure
+                await auditService.logAction({
+                    userId: req.user.userId,
+                    username: req.user.username,
+                    action: 'render_failure',
+                    resourceType: 'render',
+                    resourceId: renderHistoryId,
+                    details: {
+                        render_type: 'one_time',
+                        source: req.user.role === 'api' ? 'api' : 'web',
+                        template: originalName,
+                        format: requestData.result,
+                        error: errorMessage,
+                    },
+                    ipAddress: req.ip,
+                    userAgent: req.get('user-agent'),
+                });
+            }
+            throw conversionError;
         }
 
         // Set response headers
-        const { contentType, extension } = getOutputInfo(outputFormat);
+        const { contentType, extension } = outputInfo;
         const outputFilename = originalName.replace(/\.docx$/i, `.${extension}`);
 
         res.setHeader('Content-Type', contentType);
@@ -145,7 +223,7 @@ router.post('/', upload.single('template'), async (req: Request, res: Response, 
             res.setHeader('X-Render-Warnings', JSON.stringify(renderResult.warnings));
         }
 
-        res.send(output.buffer);
+        res.send(outputBuffer);
     } catch (error) {
         next(error);
     }
@@ -154,7 +232,7 @@ router.post('/', upload.single('template'), async (req: Request, res: Response, 
 /**
  * POST /api/render/:templateId - Render from stored template
  */
-router.post('/:templateId', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:templateId', authenticate, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { templateId } = req.params;
 
@@ -187,19 +265,97 @@ router.post('/:templateId', async (req: Request, res: Response, next: NextFuncti
             operations: processed.operations as Record<string, unknown>,
         });
 
-        // Convert to requested format
+        // Convert to requested format and track
         let output;
         const outputFormat = requestData.result || 'docx';
+        const startTime = Date.now();
+        let renderHistoryId: string | null = null;
+        let errorMessage: string | undefined;
 
-        switch (outputFormat) {
-            case 'pdf':
-                output = await pdfConverter.convert(renderResult.buffer, metadata.originalName);
-                break;
-            case 'html':
-                output = await htmlConverter.convert(renderResult.buffer, metadata.originalName);
-                break;
-            default:
-                output = docxOutput.output(renderResult.buffer, metadata.originalName);
+        try {
+            switch (outputFormat) {
+                case 'pdf':
+                    output = await pdfConverter.convert(renderResult.buffer, metadata.originalName);
+                    break;
+                case 'html':
+                    output = await htmlConverter.convert(renderResult.buffer, metadata.originalName);
+                    break;
+                default:
+                    output = docxOutput.output(renderResult.buffer, metadata.originalName);
+            }
+
+            const durationMs = Date.now() - startTime;
+
+            // Track render history (if authenticated)
+            if (req.user) {
+                const recordId = await renderHistoryService.createRenderRecord({
+                    userId: req.user.userId,
+                    templateId: templateId,
+                    templateName: metadata.originalName,
+                    data: requestData.data,
+                    outputFormat: outputFormat as 'docx' | 'pdf' | 'html',
+                });
+                renderHistoryId = recordId;
+
+                await renderHistoryService.updateRenderStatus(recordId, {
+                    status: 'success',
+                    fileSize: output.buffer.length,
+                    durationMs,
+                });
+
+                // Audit log
+                await auditService.logAction({
+                    userId: req.user.userId,
+                    username: req.user.username,
+                    action: 'render_success',
+                    resourceType: 'render',
+                    resourceId: recordId,
+                    details: {
+                        render_type: 'stored_template',
+                        source: req.user.role === 'api' ? 'api' : 'web',
+                        template_id: templateId,
+                        template: metadata.originalName,
+                        format: outputFormat,
+                        size: output.buffer.length,
+                        duration: durationMs,
+                    },
+                    ipAddress: req.ip,
+                    userAgent: req.get('user-agent'),
+                });
+            }
+        } catch (conversionError) {
+            const durationMs = Date.now() - startTime;
+            errorMessage = conversionError instanceof Error ? conversionError.message : 'Unknown error';
+
+            // Track failed render
+            if (req.user && renderHistoryId) {
+                await renderHistoryService.updateRenderStatus(renderHistoryId, {
+                    status: 'failure',
+                    durationMs,
+                    errorMessage,
+                    errorStack: conversionError instanceof Error ? conversionError.stack : undefined,
+                });
+
+                // Audit log failure
+                await auditService.logAction({
+                    userId: req.user.userId,
+                    username: req.user.username,
+                    action: 'render_failure',
+                    resourceType: 'render',
+                    resourceId: renderHistoryId,
+                    details: {
+                        render_type: 'stored_template',
+                        source: req.user.role === 'api' ? 'api' : 'web',
+                        template_id: templateId,
+                        template: metadata.originalName,
+                        format: outputFormat,
+                        error: errorMessage,
+                    },
+                    ipAddress: req.ip,
+                    userAgent: req.get('user-agent'),
+                });
+            }
+            throw conversionError;
         }
 
         // Set response headers

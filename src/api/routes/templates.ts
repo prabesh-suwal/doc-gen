@@ -5,6 +5,8 @@ import TemplateStore from '../../storage/TemplateStore.js';
 import TemplateLoader from '../../core/TemplateLoader.js';
 import SourceDetector from '../../core/SourceDetector.js';
 import { TemplateUpdateSchema } from '../middleware/validation.js';
+import { authenticate, requireRole } from '../../auth/middleware.js';
+import auditService from '../../services/AuditService.js';
 import logger from '../../utils/Logger.js';
 
 const router = Router();
@@ -35,9 +37,9 @@ templateStore.initialize().catch((err) => {
 });
 
 /**
- * POST /api/templates - Upload a new template
+ * POST /api/templates - Upload a new template (superadmin, manager)
  */
-router.post('/', upload.single('template'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', authenticate, requireRole('superadmin', 'manager'), upload.single('template'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         if (!req.file) {
             res.status(400).json({ error: 'No template file provided', code: 'MISSING_FILE' });
@@ -53,8 +55,20 @@ router.post('/', upload.single('template'), async (req: Request, res: Response, 
         // Detect source
         const sourceInfo = sourceDetector.detect(loaded.zip);
 
-        // Store the template
-        const metadata = await templateStore.store(buffer, originalName, sourceInfo.source);
+        // Store the template (file + database)
+        const metadata = await templateStore.store(buffer, originalName, sourceInfo.source, req.user!.userId);
+
+        // Audit log
+        await auditService.logAction({
+            userId: req.user!.userId,
+            username: req.user!.username,
+            action: 'template_uploaded',
+            resourceType: 'template',
+            resourceId: metadata.id,
+            details: { filename: originalName, size: metadata.size },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+        });
 
         res.status(201).json({
             success: true,
@@ -72,11 +86,23 @@ router.post('/', upload.single('template'), async (req: Request, res: Response, 
 });
 
 /**
- * GET /api/templates - List all templates
+ * GET /api/templates - List all templates (all authenticated users)
  */
-router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
+router.get('/', authenticate, async (_req: Request, res: Response, next: NextFunction) => {
     try {
         const templates = await templateStore.list();
+
+        // Audit log
+        await auditService.logAction({
+            userId: _req.user!.userId,
+            username: _req.user!.username,
+            action: 'template_listed',
+            resourceType: 'template',
+            details: { count: templates.length },
+            ipAddress: _req.ip,
+            userAgent: _req.get('user-agent'),
+        });
+
         res.json({
             success: true,
             templates: templates.map((t) => ({
@@ -94,9 +120,9 @@ router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
 });
 
 /**
- * GET /api/templates/:id - Get template info
+ * GET /api/templates/:id - Get template info (all authenticated users)
  */
-router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id', authenticate, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
         const metadata = await templateStore.getMetadata(id);
@@ -111,6 +137,18 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
         const loaded = await templateLoader.loadFromBuffer(buffer, metadata.originalName);
         const sourceInfo = sourceDetector.detect(loaded.zip);
         const markerCheck = sourceDetector.checkTemplateMarkers(loaded.zip);
+
+        // Audit log
+        await auditService.logAction({
+            userId: req.user!.userId,
+            username: req.user!.username,
+            action: 'template_viewed',
+            resourceType: 'template',
+            resourceId: id,
+            details: { filename: metadata.originalName },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+        });
 
         res.json({
             success: true,
@@ -135,9 +173,9 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 /**
- * PATCH /api/templates/:id - Update template metadata
+ * PATCH /api/templates/:id - Update template metadata (superadmin, manager)
  */
-router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/:id', authenticate, requireRole('superadmin', 'manager'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
         const updates = TemplateUpdateSchema.parse(req.body);
@@ -148,6 +186,18 @@ router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => 
             res.status(404).json({ error: 'Template not found', code: 'TEMPLATE_NOT_FOUND' });
             return;
         }
+
+        // Audit log
+        await auditService.logAction({
+            userId: req.user!.userId,
+            username: req.user!.username,
+            action: 'template_updated',
+            resourceType: 'template',
+            resourceId: id,
+            details: { filename: metadata.originalName, updates },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+        });
 
         res.json({
             success: true,
@@ -164,9 +214,9 @@ router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => 
 });
 
 /**
- * DELETE /api/templates/:id - Delete a template
+ * DELETE /api/templates/:id - Delete a template (superadmin, manager)
  */
-router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:id', authenticate, requireRole('superadmin', 'manager'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
         const deleted = await templateStore.delete(id);
@@ -176,6 +226,17 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
             return;
         }
 
+        // Audit log
+        await auditService.logAction({
+            userId: req.user!.userId,
+            username: req.user!.username,
+            action: 'template_deleted',
+            resourceType: 'template',
+            resourceId: id,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+        });
+
         res.json({ success: true, message: 'Template deleted' });
     } catch (error) {
         next(error);
@@ -183,12 +244,24 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
 });
 
 /**
- * GET /api/templates/:id/download - Download template file
+ * GET /api/templates/:id/download - Download template file (all authenticated users)
  */
-router.get('/:id/download', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id/download', authenticate, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
         const { buffer, metadata } = await templateStore.get(id);
+
+        // Audit log
+        await auditService.logAction({
+            userId: req.user!.userId,
+            username: req.user!.username,
+            action: 'template_downloaded',
+            resourceType: 'template',
+            resourceId: id,
+            details: { filename: metadata.originalName },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+        });
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
         res.setHeader('Content-Disposition', `attachment; filename="${metadata.originalName}"`);

@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import config from '../config/index.js';
 import logger from '../utils/Logger.js';
 import { TemplateNotFoundError, TemplateLoadError } from '../utils/errors.js';
+import database from '../database/connection.js';
 
 export interface TemplateMetadata {
     id: string;
@@ -68,15 +69,16 @@ export class TemplateStore {
     }
 
     /**
-     * Store a template
+     * Store a template (both file and database)
      */
-    async store(buffer: Buffer, originalName: string, source?: string): Promise<TemplateMetadata> {
+    async store(buffer: Buffer, originalName: string, source?: string, uploadedBy?: string): Promise<TemplateMetadata> {
         if (!this.index) await this.loadIndex();
 
         const id = uuidv4();
         const filename = `${id}.docx`;
         const filePath = path.join(this.storagePath, filename);
 
+        // Save to file system
         await fs.writeFile(filePath, buffer);
 
         const metadata: TemplateMetadata = {
@@ -89,8 +91,24 @@ export class TemplateStore {
             source,
         };
 
+        // Save to index.json
         this.index!.templates[id] = metadata;
         await this.saveIndex();
+
+        // Save to database
+        if (uploadedBy) {
+            try {
+                await database.query(
+                    `INSERT INTO templates (id, name, original_filename, file_path, file_size, uploaded_by, created_at, updated_at)
+                     VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
+                    [id, originalName, originalName, filePath, buffer.length, uploadedBy]
+                );
+                logger.debug(`Template saved to database: ${id}`);
+            } catch (dbError) {
+                logger.error('Failed to save template to database:', dbError);
+                // Continue even if database save fails - file system is source of truth
+            }
+        }
 
         logger.info(`Template stored: ${id} (${originalName})`);
         return metadata;
@@ -131,7 +149,7 @@ export class TemplateStore {
     }
 
     /**
-     * Delete template by ID
+     * Delete template (from both file and database)
      */
     async delete(id: string): Promise<boolean> {
         if (!this.index) await this.loadIndex();
@@ -143,6 +161,7 @@ export class TemplateStore {
 
         const filePath = path.join(this.storagePath, metadata.filename);
 
+        // Delete from file system
         try {
             await fs.unlink(filePath);
         } catch (error) {
@@ -151,8 +170,17 @@ export class TemplateStore {
             }
         }
 
+        // Delete from index
         delete this.index!.templates[id];
         await this.saveIndex();
+
+        // Delete from database
+        try {
+            await database.query('DELETE FROM templates WHERE id = $1', [id]);
+            logger.debug(`Template deleted from database: ${id}`);
+        } catch (dbError) {
+            logger.error('Failed to delete template from database:', dbError);
+        }
 
         logger.info(`Template deleted: ${id}`);
         return true;

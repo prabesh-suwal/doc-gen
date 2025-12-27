@@ -20,6 +20,9 @@ const elements = {
     // Views
     renderView: document.getElementById('render-view'),
     templatesView: document.getElementById('templates-view'),
+    usersView: document.getElementById('users-view'),
+    auditView: document.getElementById('audit-view'),
+    historyView: document.getElementById('history-view'),
     docsView: document.getElementById('docs-view'),
 
     // Navigation
@@ -88,19 +91,38 @@ function switchView(viewName) {
         item.classList.toggle('active', item.dataset.view === viewName);
     });
 
-    // Update views
-    document.querySelectorAll('.view').forEach(view => {
-        view.classList.remove('active');
+    // Hide all views
+    Object.values(elements).forEach((el) => {
+        if (el && el.classList && el.classList.contains('view')) {
+            el.classList.remove('active');
+        }
     });
 
-    const targetView = document.getElementById(`${viewName}-view`);
-    if (targetView) {
-        targetView.classList.add('active');
-    }
-
-    // Refresh data if needed
-    if (viewName === 'templates') {
-        loadTemplates();
+    // Show selected view
+    switch (viewName) {
+        case 'render':
+            elements.renderView.classList.add('active');
+            loadTemplatesForSelect(); // Load templates for the select dropdown
+            break;
+        case 'templates':
+            elements.templatesView.classList.add('active');
+            loadTemplates();
+            break;
+        case 'users':
+            elements.usersView.classList.add('active');
+            loadUsers();
+            break;
+        case 'audit':
+            elements.auditView.classList.add('active');
+            loadAuditLogs();
+            break;
+        case 'history':
+            elements.historyView.classList.add('active');
+            loadRenderHistory();
+            break;
+        case 'docs':
+            elements.docsView.classList.add('active');
+            break;
     }
 }
 
@@ -334,13 +356,13 @@ elements.renderBtn.addEventListener('click', async () => {
             formData.append('operations', JSON.stringify(operations));
             formData.append('result', outputFormat);
 
-            response = await fetch(`${API_BASE}/api/render`, {
+            response = await auth.fetch(`${API_BASE}/api/render`, {
                 method: 'POST',
                 body: formData,
             });
         } else {
             // Render from stored template
-            response = await fetch(`${API_BASE}/api/render/${state.selectedTemplateId}`, {
+            response = await auth.fetch(`${API_BASE}/api/render/${state.selectedTemplateId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -395,13 +417,14 @@ function downloadBlob(blob, filename) {
 
 async function loadTemplates() {
     try {
-        const response = await fetch(`${API_BASE}/api/templates`);
+        const response = await auth.fetch(`${API_BASE}/api/templates`);
+        if (!response.ok) throw new Error('Failed to load templates');
+
         const data = await response.json();
+        state.templates = data.templates;
 
-        state.templates = data.templates || [];
-
+        renderTemplatesGrid(state.templates); // Assuming renderTemplatesGrid is the correct function to call here
         if (state.templates.length > 0) {
-            renderTemplatesGrid(state.templates);
             elements.emptyTemplates.hidden = true;
             elements.templatesGrid.hidden = false;
         } else {
@@ -409,7 +432,12 @@ async function loadTemplates() {
             elements.templatesGrid.hidden = true;
         }
     } catch (error) {
-        showToast('Failed to load templates', 'error');
+        console.error('Error loading templates:', error);
+        elements.templateSelectList.innerHTML = `
+            <div class="no-templates">
+                <p>Failed to load templates</p>
+            </div>
+        `;
     }
 }
 
@@ -532,7 +560,7 @@ async function uploadTemplate(file) {
         const formData = new FormData();
         formData.append('template', file);
 
-        const response = await fetch(`${API_BASE}/api/templates`, {
+        const response = await auth.fetch(`${API_BASE}/api/templates`, {
             method: 'POST',
             body: formData,
         });

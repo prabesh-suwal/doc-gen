@@ -1,9 +1,14 @@
 import express, { Express } from 'express';
 import path from 'path';
+import authRouter from './api/routes/auth.js';
+import usersRouter from './api/routes/users.js';
+import auditRouter from './api/routes/audit.js';
+import renderHistoryRouter from './api/routes/renderHistory.js';
 import templatesRouter from './api/routes/templates.js';
 import renderRouter from './api/routes/render.js';
 import { errorHandler, notFoundHandler } from './api/middleware/errorHandler.js';
 import logger from './utils/Logger.js';
+import database from './database/connection.js';
 
 // Get the public directory path
 const publicPath = path.join(process.cwd(), 'public');
@@ -32,11 +37,33 @@ export function createApp(): Express {
     app.use(express.static(publicPath));
 
     // Health check
-    app.get('/health', (_req, res) => {
-        res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    app.get('/health', async (_req, res) => {
+        const health = {
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            database: 'unknown' as string,
+        };
+
+        try {
+            const dbHealthy = await database.healthCheck();
+            health.database = dbHealthy ? 'connected' : 'disconnected';
+
+            if (!dbHealthy) {
+                health.status = 'degraded';
+            }
+        } catch (error) {
+            health.database = 'error';
+            health.status = 'degraded';
+        }
+
+        res.json(health);
     });
 
     // API routes
+    app.use('/api/auth', authRouter);
+    app.use('/api/users', usersRouter);
+    app.use('/api/audit-logs', auditRouter);
+    app.use('/api/render-history', renderHistoryRouter);
     app.use('/api/templates', templatesRouter);
     app.use('/api/render', renderRouter);
 
