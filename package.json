@@ -22,6 +22,7 @@
   "license": "MIT",
   "dependencies": {
     "angular-expressions": "^1.2.1",
+    "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "dayjs": "^1.11.13",
     "docxtemplater": "^3.50.0",

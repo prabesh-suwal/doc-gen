@@ -17,21 +17,14 @@ export interface TemplateMetadata {
     tags?: string[];
 }
 
-interface TemplateIndex {
-    templates: Record<string, TemplateMetadata>;
-}
-
 /**
- * TemplateStore - File-based template storage
+ * TemplateStore - Database-backed template storage
  */
 export class TemplateStore {
     private storagePath: string;
-    private indexPath: string;
-    private index: TemplateIndex | null = null;
 
     constructor() {
         this.storagePath = config.storagePath;
-        this.indexPath = path.join(this.storagePath, 'index.json');
     }
 
     /**
@@ -39,41 +32,25 @@ export class TemplateStore {
      */
     async initialize(): Promise<void> {
         await fs.mkdir(this.storagePath, { recursive: true });
-        await this.loadIndex();
         logger.info(`Template storage initialized at: ${this.storagePath}`);
     }
 
-    /**
-     * Load the template index
-     */
-    private async loadIndex(): Promise<void> {
-        try {
-            const data = await fs.readFile(this.indexPath, 'utf-8');
-            this.index = JSON.parse(data);
-        } catch (error) {
-            if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-                this.index = { templates: {} };
-                await this.saveIndex();
-            } else {
-                throw error;
-            }
-        }
-    }
 
-    /**
-     * Save the template index
-     */
-    private async saveIndex(): Promise<void> {
-        if (!this.index) return;
-        await fs.writeFile(this.indexPath, JSON.stringify(this.index, null, 2));
-    }
 
     /**
      * Store a template (both file and database)
      */
-    async store(buffer: Buffer, originalName: string, source?: string, uploadedBy?: string): Promise<TemplateMetadata> {
-        if (!this.index) await this.loadIndex();
-
+    async store(
+        buffer: Buffer,
+        originalName: string,
+        source?: string,
+        uploadedBy?: string,
+        options?: {
+            tags?: string[];
+            sampleData?: any;
+            // Removed: group?: string;
+        }
+    ): Promise<TemplateMetadata> {
         const id = uuidv4();
         const filename = `${id}.docx`;
         const filePath = path.join(this.storagePath, filename);
@@ -89,19 +66,19 @@ export class TemplateStore {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             source,
+            tags: options?.tags,
         };
-
-        // Save to index.json
-        this.index!.templates[id] = metadata;
-        await this.saveIndex();
 
         // Save to database
         if (uploadedBy) {
             try {
+                const tagsArray = options?.tags || [];
+                const sampleDataJson = options?.sampleData ? JSON.stringify(options.sampleData) : null;
+
                 await database.query(
-                    `INSERT INTO templates (id, name, original_filename, file_path, file_size, uploaded_by, created_at, updated_at)
-                     VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
-                    [id, originalName, originalName, filePath, buffer.length, uploadedBy]
+                    `INSERT INTO templates (id, name, original_filename, file_path, file_size, uploaded_by, tags, sample_data, created_at, updated_at)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())`,
+                    [id, originalName, originalName, filePath, buffer.length, uploadedBy, tagsArray, sampleDataJson]
                 );
                 logger.debug(`Template saved to database: ${id}`);
             } catch (dbError) {
@@ -118,23 +95,43 @@ export class TemplateStore {
      * Get template by ID
      */
     async get(id: string): Promise<{ buffer: Buffer; metadata: TemplateMetadata }> {
-        if (!this.index) await this.loadIndex();
-
-        const metadata = this.index!.templates[id];
-        if (!metadata) {
-            throw new TemplateNotFoundError(id);
-        }
-
-        const filePath = path.join(this.storagePath, metadata.filename);
-
         try {
-            const buffer = await fs.readFile(filePath);
-            return { buffer, metadata };
-        } catch (error) {
-            if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            // Query database for metadata
+            const result = await database.query(
+                `SELECT id, name as "originalName", original_filename as filename, 
+                        file_path as "filePath", file_size as size, 
+                        created_at as "createdAt", updated_at as "updatedAt", 
+                        group_name as "group", tags, sample_data as "sampleData"
+                 FROM templates 
+                 WHERE id = $1`,
+                [id]
+            );
+
+            if (result.rows.length === 0) {
                 throw new TemplateNotFoundError(id);
             }
-            throw new TemplateLoadError(`Failed to read template: ${id}`, {
+
+            const row = result.rows[0];
+            const metadata: TemplateMetadata = {
+                id: row.id,
+                filename: row.filename,
+                originalName: row.originalName,
+                size: row.size,
+                createdAt: row.createdAt,
+                updatedAt: row.updatedAt,
+                tags: row.tags || []
+            };
+
+            // Read file from disk
+            const buffer = await fs.readFile(row.filePath);
+
+            return { buffer, metadata };
+        } catch (error) {
+            if (error instanceof TemplateNotFoundError) {
+                throw error;
+            }
+            logger.error(`Failed to get template ${id}:`, error);
+            throw new TemplateLoadError(`Failed to load template: ${id}`, {
                 originalError: (error as Error).message,
             });
         }
@@ -144,86 +141,145 @@ export class TemplateStore {
      * Get template metadata by ID
      */
     async getMetadata(id: string): Promise<TemplateMetadata | null> {
-        if (!this.index) await this.loadIndex();
-        return this.index!.templates[id] || null;
+        try {
+            const result = await database.query(
+                `SELECT id, name as "originalName", original_filename as filename, 
+                        file_size as size, created_at as "createdAt", 
+                        updated_at as "updatedAt", group_name as "group", 
+                        tags, sample_data as "sampleData"
+                 FROM templates 
+                 WHERE id = $1`,
+                [id]
+            );
+
+            if (result.rows.length === 0) {
+                return null;
+            }
+
+            const row = result.rows[0];
+            return {
+                id: row.id,
+                filename: row.filename,
+                originalName: row.originalName,
+                size: row.size,
+                createdAt: row.createdAt,
+                updatedAt: row.updatedAt,
+                tags: row.tags || []
+            };
+        } catch (error) {
+            logger.error(`Failed to get template metadata ${id}:`, error);
+            return null;
+        }
     }
 
     /**
-     * Delete template (from both file and database)
+     * Delete a template
      */
-    async delete(id: string): Promise<boolean> {
-        if (!this.index) await this.loadIndex();
-
-        const metadata = this.index!.templates[id];
-        if (!metadata) {
-            return false;
-        }
-
-        const filePath = path.join(this.storagePath, metadata.filename);
-
-        // Delete from file system
+    async delete(id: string): Promise<void> {
         try {
-            await fs.unlink(filePath);
+            // Get file path from database
+            const result = await database.query(
+                `SELECT file_path FROM templates WHERE id = $1`,
+                [id]
+            );
+
+            if (result.rows.length === 0) {
+                throw new TemplateNotFoundError(id);
+            }
+
+            const filePath = result.rows[0].file_path;
+
+            // Delete from database first
+            await database.query(
+                `DELETE FROM templates WHERE id = $1`,
+                [id]
+            );
+
+            // Then delete file from disk
+            try {
+                await fs.unlink(filePath);
+            } catch (fileError) {
+                logger.warn(`Failed to delete template file: ${filePath}`, fileError);
+                // Continue even if file deletion fails
+            }
+
+            logger.info(`Template deleted: ${id}`);
         } catch (error) {
-            if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+            if (error instanceof TemplateNotFoundError) {
                 throw error;
             }
+            logger.error(`Failed to delete template ${id}:`, error);
+            throw error;
         }
-
-        // Delete from index
-        delete this.index!.templates[id];
-        await this.saveIndex();
-
-        // Delete from database
-        try {
-            await database.query('DELETE FROM templates WHERE id = $1', [id]);
-            logger.debug(`Template deleted from database: ${id}`);
-        } catch (dbError) {
-            logger.error('Failed to delete template from database:', dbError);
-        }
-
-        logger.info(`Template deleted: ${id}`);
-        return true;
     }
 
     /**
      * List all templates
      */
     async list(): Promise<TemplateMetadata[]> {
-        if (!this.index) await this.loadIndex();
-        return Object.values(this.index!.templates);
+        try {
+            const result = await database.query(
+                `SELECT id, name as "originalName", original_filename as filename, 
+                        file_size as size, created_at as "createdAt", 
+                        updated_at as "updatedAt", 
+                        tags, sample_data as "sampleData"
+                 FROM templates 
+                 ORDER BY created_at DESC`
+            );
+
+            return result.rows.map(row => ({
+                id: row.id,
+                filename: row.filename,
+                originalName: row.originalName,
+                size: row.size,
+                createdAt: row.createdAt,
+                updatedAt: row.updatedAt,
+                tags: row.tags || []
+            }));
+        } catch (error) {
+            logger.error('Failed to list templates from database:', error);
+            return [];
+        }
     }
 
     /**
      * Check if template exists
      */
     async exists(id: string): Promise<boolean> {
-        if (!this.index) await this.loadIndex();
-        return id in this.index!.templates;
+        try {
+            const result = await database.query(
+                `SELECT 1 FROM templates WHERE id = $1`,
+                [id]
+            );
+            return result.rows.length > 0;
+        } catch (error) {
+            logger.error(`Failed to check template existence: ${id}`, error);
+            return false;
+        }
     }
 
     /**
      * Update template metadata
      */
     async updateMetadata(id: string, updates: Partial<TemplateMetadata>): Promise<TemplateMetadata | null> {
-        if (!this.index) await this.loadIndex();
+        // if (!this.index) await this.loadIndex();
 
-        const metadata = this.index!.templates[id];
-        if (!metadata) {
-            return null;
-        }
+        // const metadata = this.index!.templates[id];
+        // if (!metadata) {
+        //     return null;
+        // }
 
-        const updated = {
-            ...metadata,
-            ...updates,
-            id, // Ensure ID cannot be changed
-            updatedAt: new Date().toISOString(),
-        };
+        // const updated = {
+        //     ...metadata,
+        //     ...updates,
+        //     id, // Ensure ID cannot be changed
+        //     updatedAt: new Date().toISOString(),
+        // };
 
-        this.index!.templates[id] = updated;
-        await this.saveIndex();
+        // this.index!.templates[id] = updated;
+        // await this.saveIndex();
 
-        return updated;
+        return null;
     }
 }
 

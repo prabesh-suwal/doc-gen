@@ -28,7 +28,15 @@ export type AuditAction =
     | 'template_downloaded'
     // Renders
     | 'render_success'
-    | 'render_failure';
+    | 'render_failure'
+    // Groups
+    | 'group_created'
+    | 'group_updated'
+    | 'group_deleted'
+    | 'group_listed'
+    | 'group_viewed'
+    | 'group_toggled'
+    ;
 
 export interface AuditLogEntry {
     userId?: string;

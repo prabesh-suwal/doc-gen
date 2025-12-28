@@ -4,8 +4,10 @@ import authRouter from './api/routes/auth.js';
 import usersRouter from './api/routes/users.js';
 import auditRouter from './api/routes/audit.js';
 import renderHistoryRouter from './api/routes/renderHistory.js';
+import editorRouter from './api/routes/editor.js';
 import templatesRouter from './api/routes/templates.js';
 import renderRouter from './api/routes/render.js';
+import groupsRouter from './api/routes/groups.js';
 import { errorHandler, notFoundHandler } from './api/middleware/errorHandler.js';
 import logger from './utils/Logger.js';
 import database from './database/connection.js';
@@ -64,8 +66,10 @@ export function createApp(): Express {
     app.use('/api/users', usersRouter);
     app.use('/api/audit-logs', auditRouter);
     app.use('/api/render-history', renderHistoryRouter);
+    app.use('/api/editor', editorRouter);
     app.use('/api/templates', templatesRouter);
     app.use('/api/render', renderRouter);
+    app.use('/api/groups', groupsRouter);
 
     // Serve index.html for root path
     app.get('/', (_req, res) => {

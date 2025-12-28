@@ -23,6 +23,7 @@ const elements = {
     usersView: document.getElementById('users-view'),
     auditView: document.getElementById('audit-view'),
     historyView: document.getElementById('history-view'),
+    editorView: document.getElementById('editor-view'),
     docsView: document.getElementById('docs-view'),
 
     // Navigation
@@ -32,6 +33,8 @@ const elements = {
     uploadMode: document.getElementById('upload-mode'),
     selectMode: document.getElementById('select-mode'),
     toggleBtns: document.querySelectorAll('.toggle-btn'),
+    uploadTab: document.getElementById('upload-tab'),
+    selectTab: document.getElementById('select-tab'),
 
     // Dropzone
     dropzone: document.getElementById('dropzone'),
@@ -41,9 +44,11 @@ const elements = {
     fileName: document.getElementById('file-name'),
     fileSize: document.getElementById('file-size'),
     removeFile: document.getElementById('remove-file'),
+    fileUpload: document.getElementById('file-upload'),
 
     // Template select
     templateSelectList: document.getElementById('template-select-list'),
+    templateSelect: document.getElementById('template-select'),
 
     // JSON Editor
     jsonEditor: document.getElementById('json-editor'),
@@ -79,6 +84,282 @@ const elements = {
     toastContainer: document.getElementById('toast-container'),
 };
 
+/**
+ * Load groups for upload dropdown
+ */
+let uploadGroups = [];
+
+async function loadGroupsForUpload() {
+    try {
+        console.log('Loading groups for upload autocomplete...');
+        const response = await auth.fetch('/api/groups/active');
+        uploadGroups = await response.json();
+        console.log('Loaded upload groups:', uploadGroups);
+        setupUploadGroupAutocomplete();
+    } catch (error) {
+        console.error('Failed to load groups:', error);
+        uploadGroups = [];
+    }
+}
+
+/**
+ * Setup upload group autocomplete
+ */
+let uploadAutocompleteInitialized = false;
+
+function setupUploadGroupAutocomplete() {
+    const input = document.getElementById('templateGroupInput');
+    const dropdown = document.getElementById('groupDropdown');
+    const hiddenInput = document.getElementById('templateGroupSelect');
+
+    if (!input || !dropdown || !hiddenInput || uploadAutocompleteInitialized) {
+        return;
+    }
+
+    uploadAutocompleteInitialized = true;
+    let selectedIndex = -1;
+
+    // Show dropdown on focus
+    input.addEventListener('focus', () => {
+        filterUploadGroups(input.value);
+    });
+
+    // Filter as user types
+    input.addEventListener('input', (e) => {
+        selectedIndex = -1;
+        filterUploadGroups(e.target.value);
+    });
+
+    // Handle keyboard navigation
+    input.addEventListener('keydown', (e) => {
+        const items = dropdown.querySelectorAll('.autocomplete-item');
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+            updateUploadSelection(items, selectedIndex);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedIndex = Math.max(selectedIndex - 1, -1);
+            updateUploadSelection(items, selectedIndex);
+        } else if (e.key === 'Enter' && selectedIndex >= 0) {
+            e.preventDefault();
+            items[selectedIndex].click();
+        } else if (e.key === 'Escape') {
+            dropdown.style.display = 'none';
+        }
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+}
+
+function filterUploadGroups(query) {
+    const filtered = uploadGroups.filter(group =>
+        group.name.toLowerCase().includes(query.toLowerCase())
+    );
+
+    console.log('Filtering upload groups with query:', query, 'Found:', filtered.length);
+    renderUploadGroupDropdown(filtered);
+}
+
+function renderUploadGroupDropdown(groups) {
+    const dropdown = document.getElementById('groupDropdown');
+    const input = document.getElementById('templateGroupInput');
+
+    if (!dropdown) return;
+
+    // Get already selected group IDs
+    const selectedIds = getSelectedGroupIds();
+
+    // Filter out already selected groups
+    const availableGroups = groups.filter(g => !selectedIds.includes(g.id));
+
+    if (availableGroups.length === 0) {
+        dropdown.innerHTML = '<div class="autocomplete-empty">No more groups available</div>';
+        dropdown.style.display = 'block';
+        return;
+    }
+
+    dropdown.innerHTML = availableGroups.map(group => `
+        <div class="autocomplete-item" data-id="${group.id}" data-name="${escapeHtml(group.name)}">
+            ${escapeHtml(group.name)}
+        </div>
+    `).join('');
+
+    dropdown.style.display = 'block';
+    console.log('Upload dropdown displayed with', availableGroups.length, 'groups');
+
+    // Add click handlers
+    dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
+        item.addEventListener('click', () => {
+            addGroupTag(item.dataset.id, item.dataset.name);
+            input.value = '';
+            dropdown.style.display = 'none';
+        });
+    });
+}
+
+// Store selected groups
+let selectedGroups = [];
+
+function getSelectedGroupIds() {
+    return selectedGroups.map(g => g.id);
+}
+
+function addGroupTag(id, name) {
+    // Check if already added
+    if (selectedGroups.find(g => g.id === id)) {
+        return;
+    }
+
+    selectedGroups.push({ id, name });
+    renderGroupTags();
+    updateHiddenGroupInput();
+}
+
+function removeGroupTag(id) {
+    selectedGroups = selectedGroups.filter(g => g.id !== id);
+    renderGroupTags();
+    updateHiddenGroupInput();
+}
+
+function renderGroupTags() {
+    const container = document.getElementById('selectedGroupsTags');
+    if (!container) return;
+
+    if (selectedGroups.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = selectedGroups.map(group => `
+        <span class="group-tag">
+            ${escapeHtml(group.name)}
+            <button type="button" class="group-tag-remove" onclick="removeGroupTag('${group.id}')">&times;</button>
+        </span>
+    `).join('');
+}
+
+function updateHiddenGroupInput() {
+    const hiddenInput = document.getElementById('templateGroupSelect');
+    if (hiddenInput) {
+        hiddenInput.value = JSON.stringify(selectedGroups.map(g => g.id));
+    }
+}
+
+function updateUploadSelection(items, selectedIndex) {
+    items.forEach((item, index) => {
+        item.classList.toggle('selected', index === selectedIndex);
+    });
+
+    if (selectedIndex >= 0 && items[selectedIndex]) {
+        items[selectedIndex].scrollIntoView({ block: 'nearest' });
+    }
+}
+
+function clearSelectedGroups() {
+    selectedGroups = [];
+    renderGroupTags();
+    updateHiddenGroupInput();
+}
+
+// Upload template button
+document.getElementById('upload-template-btn')?.addEventListener('click', async () => {
+    // Clear previous selections and load groups
+    clearSelectedGroups();
+    await loadGroupsForUpload();
+    document.getElementById('upload-modal').style.display = 'flex';
+});
+
+document.getElementById('upload-first-btn')?.addEventListener('click', async () => {
+    await loadGroupsForUpload();
+    document.getElementById('upload-modal').style.display = 'flex';
+});
+
+// Upload form
+document.getElementById('upload-form')?.addEventListener('submit', handleUpload);
+
+// Close modals
+document.querySelectorAll('.modal-close').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.target.closest('.modal').style.display = 'none';
+    });
+});
+
+// Confirm upload button
+document.getElementById('confirmUploadBtn')?.addEventListener('click', async () => {
+    const nameInput = document.getElementById('upload-name');
+    const fileInput = document.getElementById('upload-file');
+
+    const name = nameInput.value.trim();
+    const file = fileInput.files[0];
+
+    if (!name) {
+        showToast('Please enter a template name', 'error');
+        return;
+    }
+
+    if (!file) {
+        showToast('Please select a .docx file', 'error');
+        return;
+    }
+
+    try {
+        showLoading('Uploading template...');
+
+        const formData = new FormData();
+        formData.append('template', file);
+        formData.append('name', name);
+
+        // Get group IDs from hidden input (JSON array)
+        if (selectedGroups.length > 0) {
+            const groupIds = selectedGroups.map(g => g.id);
+            console.log('Sending group IDs:', groupIds);
+            formData.append('groupIds', JSON.stringify(groupIds));
+        }
+
+        // Get tags
+        const tagsValue = document.getElementById('upload-tags').value;
+        if (tagsValue) {
+            const tags = tagsValue.split(',').map(t => t.trim()).filter(Boolean);
+            formData.append('tags', JSON.stringify(tags));
+        }
+
+        const response = await auth.fetch('/api/templates', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showToast('Template uploaded successfully!', 'success');
+            document.getElementById('upload-modal').style.display = 'none';
+
+            // Clear form
+            nameInput.value = '';
+            fileInput.value = '';
+            document.getElementById('upload-tags').value = '';
+            clearSelectedGroups();
+
+            // Reload templates
+            loadTemplates();
+        } else {
+            showToast(data.error || 'Upload failed', 'error');
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        showToast('Failed to upload template', 'error');
+    } finally {
+        hideLoading();
+    }
+});
+
 // ============================================
 // Navigation
 // ============================================
@@ -98,6 +379,13 @@ function switchView(viewName) {
         }
     });
 
+    // Also hide groups-view explicitly
+    const groupsView = document.getElementById('groups-view');
+    if (groupsView) {
+        groupsView.style.display = 'none';
+        groupsView.classList.remove('active');
+    }
+
     // Show selected view
     switch (viewName) {
         case 'render':
@@ -107,6 +395,23 @@ function switchView(viewName) {
         case 'templates':
             elements.templatesView.classList.add('active');
             loadTemplates();
+            break;
+        case 'groups':
+            const groupsView = document.getElementById('groups-view');
+            if (groupsView) {
+                groupsView.style.display = 'block';
+                groupsView.classList.add('active');
+                if (typeof loadGroups === 'function') {
+                    loadGroups();
+                }
+            }
+            break;
+        case 'editor':
+            elements.editorView.classList.add('active');
+            // Initialize OnlyOffice editor
+            if (typeof initializeEditor === 'function') {
+                initializeEditor();
+            }
             break;
         case 'users':
             elements.usersView.classList.add('active');
@@ -543,7 +848,16 @@ elements.uploadModal?.addEventListener('click', (e) => {
 // Setup modal dropzone
 if (elements.modalDropzone && elements.modalFileInput) {
     setupDropzone(elements.modalDropzone, elements.modalFileInput, async (file) => {
-        await uploadTemplate(file);
+        // This callback now needs to call handleUpload or a similar function
+        // For simplicity, we'll adapt it to use the new upload logic
+        const fileInput = document.getElementById('template-file'); // Assuming this is the input for the modal
+        const groupSelect = document.getElementById('upload-group');
+        const tagsInput = document.getElementById('upload-tags');
+
+        // Simulate setting the file to the input for handleUpload to pick it up
+        // This might require a more robust solution depending on how handleUpload is triggered
+        // For now, we'll pass the file directly to a modified upload function
+        await uploadTemplateWithDetails(file, groupSelect.value, tagsInput.value);
         hideUploadModal();
     });
 
@@ -553,12 +867,30 @@ if (elements.modalDropzone && elements.modalFileInput) {
     });
 }
 
-async function uploadTemplate(file) {
+// New function to handle upload with group and tags
+async function uploadTemplateWithDetails(file, name) {
     showLoading('Uploading template...');
 
     try {
+        console.log(file, name);
+        debugger;
+
         const formData = new FormData();
         formData.append('template', file);
+        formData.append('name', name);
+
+        // Get group IDs from hidden input (JSON array)
+        const groupIdsJson = document.getElementById('selectedGroupsTags').value;
+        if (groupIdsJson) {
+            formData.append('groupIds', groupIdsJson);
+        }
+
+        // Get tags
+        const tagsValue = document.getElementById('upload-tags').value;
+        if (tagsValue) {
+            const tags = tagsValue.split(',').map(t => t.trim()).filter(Boolean);
+            formData.append('tags', JSON.stringify(tags));
+        }
 
         const response = await auth.fetch(`${API_BASE}/api/templates`, {
             method: 'POST',
@@ -579,6 +911,32 @@ async function uploadTemplate(file) {
         hideLoading();
     }
 }
+
+// The original uploadTemplate function is replaced by uploadTemplateWithDetails
+// If there's a form submission for upload, it should call this new function.
+// Assuming a form with id 'upload-form' and a submit button.
+document.getElementById('upload-form')?.addEventListener('submit', async function handleUpload(e) {
+    e.preventDefault();
+
+    const fileInput = document.getElementById('template-file');
+    const groupSelect = document.getElementById('upload-group');
+    const tagsInput = document.getElementById('upload-tags');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        showToast('Please select a file', 'error');
+        return;
+    }
+
+    await uploadTemplateWithDetails(file, groupSelect.value, tagsInput.value);
+
+    // Clear form fields after successful upload
+    hideUploadModal(); // Assuming this also clears the modal
+    fileInput.value = '';
+    groupSelect.value = '';
+    tagsInput.value = '';
+});
+
 
 // ============================================
 // Loading Overlay

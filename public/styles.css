@@ -918,8 +918,222 @@ body {
 }
 
 /* ============================================
+   Groups Grid
+   ============================================ */
+
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.group-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  transition: all 0.2s;
+}
+
+.group-card:hover {
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+  transform: translateY(-2px);
+  border-color: var(--accent-primary);
+}
+
+.group-card.inactive {
+  opacity: 0.6;
+  background: var(--bg-tertiary);
+}
+
+.group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 12px;
+}
+
+.group-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.group-description {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0 0 16px 0;
+  line-height: 1.5;
+}
+
+.group-stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.group-stats .stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.group-stats .stat svg {
+  width: 16px;
+  height: 16px;
+}
+
+.group-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-success {
+  background: #c6f6d5;
+  color: #22543d;
+}
+
+.badge-secondary {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+/* ============================================
+   Autocomplete Dropdown
+   ============================================ */
+
+.autocomplete-wrapper {
+  position: relative;
+}
+
+.autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin-top: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.autocomplete-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  color: #2d3748;
+  transition: background 0.15s;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+  background: #f7fafc;
+}
+
+.autocomplete-item.active {
+  background: rgba(99, 102, 241, 0.15);
+}
+
+.autocomplete-empty {
+  padding: 10px 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* ============================================
+   Group Tags
+   ============================================ */
+
+.group-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent-primary);
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.group-tag-remove {
+  background: none;
+  border: none;
+  color: var(--accent-primary);
+  cursor: pointer;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.group-tag-remove:hover {
+  opacity: 1;
+}
+
+
+/* ============================================
    Modal
    ============================================ */
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal[style*="display: flex"],
+.modal.show {
+  display: flex !important;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 .modal-overlay {
   position: fixed;
@@ -931,27 +1145,6 @@ body {
   justify-content: center;
   z-index: 1000;
   animation: fadeIn var(--transition-fast);
-}
-
-.modal {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  width: 100%;
-  max-width: 500px;
-  animation: slideUp var(--transition-normal);
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .modal-header {
@@ -1129,6 +1322,7 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
 /* ============================================
    Operations Section
    ============================================ */
@@ -1203,11 +1397,11 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
-.toggle-switch input[type="checkbox"]:checked + .toggle-slider {
+.toggle-switch input[type="checkbox"]:checked+.toggle-slider {
   background: var(--accent-primary);
 }
 
-.toggle-switch input[type="checkbox"]:checked + .toggle-slider::before {
+.toggle-switch input[type="checkbox"]:checked+.toggle-slider::before {
   transform: translateX(20px);
 }
 

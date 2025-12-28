@@ -8,6 +8,7 @@ import { TemplateUpdateSchema } from '../middleware/validation.js';
 import { authenticate, requireRole } from '../../auth/middleware.js';
 import auditService from '../../services/AuditService.js';
 import logger from '../../utils/Logger.js';
+import groupService from '../../services/GroupService.js';
 
 const router = Router();
 
@@ -49,6 +50,10 @@ router.post('/', authenticate, requireRole('superadmin', 'manager'), upload.sing
         const buffer = req.file.buffer;
         const originalName = req.file.originalname;
 
+        // Parse groupIds and tags from form data
+        const groupIds = req.body.groupIds ? JSON.parse(req.body.groupIds) : [];
+        const tags = req.body.tags ? JSON.parse(req.body.tags) : undefined;
+
         // Validate the template
         const loaded = await templateLoader.loadFromBuffer(buffer, originalName);
 
@@ -56,7 +61,14 @@ router.post('/', authenticate, requireRole('superadmin', 'manager'), upload.sing
         const sourceInfo = sourceDetector.detect(loaded.zip);
 
         // Store the template (file + database)
-        const metadata = await templateStore.store(buffer, originalName, sourceInfo.source, req.user!.userId);
+        const metadata = await templateStore.store(buffer, originalName, sourceInfo.source, req.user!.userId, {
+            tags
+        });
+
+        // Assign groups using GroupService
+        if (groupIds.length > 0) {
+            await groupService.assignToTemplate(metadata.id, groupIds, req.user!.userId);
+        }
 
         // Audit log
         await auditService.logAction({
@@ -65,7 +77,12 @@ router.post('/', authenticate, requireRole('superadmin', 'manager'), upload.sing
             action: 'template_uploaded',
             resourceType: 'template',
             resourceId: metadata.id,
-            details: { filename: originalName, size: metadata.size },
+            details: {
+                filename: originalName,
+                size: metadata.size,
+                groupIds,
+                tags
+            },
             ipAddress: req.ip,
             userAgent: req.get('user-agent'),
         });
@@ -114,6 +131,33 @@ router.get('/', authenticate, async (_req: Request, res: Response, next: NextFun
                 updatedAt: t.updatedAt,
             })),
         });
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * GET /api/templates/groups - Get distinct group names
+ */
+router.get('/groups', authenticate, async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+        const groups = await groupService.list(false);
+        // Return just the group objects (id, name, etc.)
+        res.json(groups);
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * GET /api/templates/:id/groups - Get groups assigned to a template
+ */
+router.get('/:id/groups', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { id } = req.params;
+        const groups = await groupService.getTemplateGroups(id);
+
+        res.json(groups);
     } catch (error) {
         next(error);
     }
@@ -219,12 +263,9 @@ router.patch('/:id', authenticate, requireRole('superadmin', 'manager'), async (
 router.delete('/:id', authenticate, requireRole('superadmin', 'manager'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
-        const deleted = await templateStore.delete(id);
 
-        if (!deleted) {
-            res.status(404).json({ error: 'Template not found', code: 'TEMPLATE_NOT_FOUND' });
-            return;
-        }
+        // Delete the template
+        await templateStore.delete(id);
 
         // Audit log
         await auditService.logAction({
@@ -233,11 +274,12 @@ router.delete('/:id', authenticate, requireRole('superadmin', 'manager'), async 
             action: 'template_deleted',
             resourceType: 'template',
             resourceId: id,
+            details: {},
             ipAddress: req.ip,
             userAgent: req.get('user-agent'),
         });
 
-        res.json({ success: true, message: 'Template deleted' });
+        res.json({ success: true });
     } catch (error) {
         next(error);
     }

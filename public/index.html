@@ -35,9 +35,20 @@
                 </a>
                 <a href="#" class="nav-item" data-view="templates">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
                     </svg>
                     <span>Templates</span>
+                </a>
+                <a href="#" class="nav-item" data-view="groups" data-role-required="superadmin,manager"
+                    style="display: none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span>Groups</span>
                 </a>
                 <a href="#" class="nav-item" data-view="users" id="usersMenuItem" style="display: none;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -58,7 +69,7 @@
                     </svg>
                     <span>Audit Logs</span>
                 </a>
-                <a href="#" class="nav-item" data-view="history" id="historyMenuItem" style="display: none;">
+                <a href="#" class="nav-item" data-view="history" id="historyMenuItem">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                     </svg>
@@ -293,13 +304,24 @@ Example:
                         <h1>Saved Templates</h1>
                         <p class="subtitle">Manage your uploaded document templates</p>
                     </div>
-                    <button class="btn btn-primary" id="upload-template-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                        Upload Template
-                    </button>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-primary" id="createTemplateBtn" style="display: none;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="12" y1="11" x2="12" y2="17"></line>
+                                <line x1="9" y1="14" x2="15" y2="14"></line>
+                            </svg>
+                            ✨ Create Template
+                        </button>
+                        <button class="btn btn-primary" id="upload-template-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            📤 Upload Template
+                        </button>
+                    </div>
                 </header>
 
                 <div class="templates-grid" id="templates-grid">
@@ -313,6 +335,23 @@ Example:
                     <h3>No templates yet</h3>
                     <p>Upload your first DOCX template to get started</p>
                     <button class="btn btn-primary" id="upload-first-btn">Upload Template</button>
+                </div>
+            </div>
+
+            <!-- Groups View -->
+            <div id="groups-view" class="view" style="display: none;">
+                <header class="view-header">
+                    <div>
+                        <h1>Groups</h1>
+                        <p class="subtitle">Organize templates with groups</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="showGroupModal()" data-role-required="superadmin">
+                        ➕ Create Group
+                    </button>
+                </header>
+
+                <div id="groups-grid" class="groups-grid" style="margin-top: 24px;">
+                    <!-- Groups will be rendered here -->
                 </div>
             </div>
 
@@ -503,6 +542,174 @@ Example:
                 </div>
             </div>
 
+            <!-- OnlyOffice Editor View -->
+            <div id="editor-view" class="view">
+                <header class="view-header">
+                    <!-- <div>
+                        <h1>Create Template</h1>
+                        <p class="subtitle">Design your document template using OnlyOffice Editor</p>
+                    </div> -->
+                    <div style="display: flex; gap: 12px;">
+                        <button id="saveTemplateBtn" class="btn btn-primary"
+                            style="background: #48bb78; border-color: #48bb78;">
+                            💾 Save Template
+                        </button>
+                        <button id="insertJsonBtn" class="btn"
+                            style="background: #4299e1; border-color: #4299e1; color: white;">
+                            📋 Insert JSON
+                        </button>
+                        <button id="testRenderBtn" class="btn"
+                            style="background: #9f7aea; border-color: #9f7aea; color: white;">
+                            🧪 Test Render
+                        </button>
+                        <button id="cancelEditorBtn" class="btn"
+                            style="background: #e53e3e; border-color: #e53e3e; color: white;">
+                            ❌ Cancel
+                        </button>
+                    </div>
+                </header>
+
+                <div style="display: flex; gap: 16px; height: calc(100vh - 140px);">
+                    <!-- OnlyOffice Editor -->
+                    <div id="editorContainer"
+                        style="flex: 1; min-height: 600px; position: relative; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <div id="editorPlaceholder"
+                            style="display: flex; align-items: center; justify-content: center; height: 100%; color: #718096;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 64px; margin-bottom: 16px;">📝</div>
+                                <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Loading OnlyOffice
+                                    Editor...</div>
+                                <div style="font-size: 14px; opacity: 0.8;">Please wait while we initialize the editor
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Variable Suggestions Panel -->
+                    <div id="variableSuggestions"
+                        style="width: 300px; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow-y: auto; display: none;">
+                        <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #2d3748;">Available Variables</h3>
+                        <div id="variablesList" style="display: flex; flex-direction: column; gap: 8px;">
+                            <p style="color: #718096; font-size: 14px; text-align: center; padding: 24px 0;">
+                                Click "📋 Insert JSON" to add sample data
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Template Modal -->
+            <!-- Save Template Modal -->
+            <div id="saveTemplateModal" class="modal" style="display: none;">
+                <div class="modal-content" style="max-width: 650px;">
+                    <div class="modal-header">
+                        <h2 style="margin: 0; font-size: 20px; color: #2d3748;">💾 Save Template</h2>
+                        <button class="modal-close"
+                            style="background: none; border: none; font-size: 28px; color: #718096; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Template Name -->
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748;">
+                                Template Name *
+                            </label>
+                            <input type="text" id="templateNameInput" placeholder="e.g., Invoice Template"
+                                style="width: 100%; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;"
+                                required />
+                            <small style="color: #718096; font-size: 12px; margin-top: 4px; display: block;">
+                                The .docx extension will be added automatically
+                            </small>
+                        </div>
+
+
+
+                        <!-- Group Selection with Autocomplete -->
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748;">
+                                Groups (Optional)
+                            </label>
+                            <div class="autocomplete-wrapper" style="position: relative;">
+                                <!-- Selected groups as tags -->
+                                <div id="saveTemplateSelectedGroupsTags"
+                                    style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-height: 24px;">
+                                    <!-- Selected group tags will appear here -->
+                                </div>
+                                <input type="text" id="saveTemplateGroupInput" class="form-control"
+                                    placeholder="Type to search and add groups..." autocomplete="off"
+                                    style="width: 100%; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                <input type="hidden" id="saveTemplateGroupId">
+                                <div id="saveTemplateGroupDropdown" class="autocomplete-dropdown"
+                                    style="display: none; position: absolute; z-index: 10000; width: 100%; max-height: 200px; overflow-y: auto; background: white; border: 1px solid #e2e8f0; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 4px;">
+                                    <!-- Groups will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tags -->
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748;">
+                                Tags (Optional)
+                            </label>
+                            <input type="text" id="templateTagsInput" placeholder="invoice, billing, finance"
+                                style="width: 100%; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;" />
+                            <small style="color: #718096; font-size: 12px; margin-top: 4px; display: block;">
+                                Comma-separated tags for better organization
+                            </small>
+                        </div>
+
+                        <!-- Sample JSON (readonly, auto-filled) -->
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748;">
+                                Sample JSON Data
+                            </label>
+                            <textarea id="sampleJsonDisplay" rows="6" readonly
+                                style="width: 100%; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 12px; background: #f7fafc; resize: vertical;"></textarea>
+                            <small style="color: #718096; font-size: 12px; margin-top: 4px; display: block;">
+                                This sample data will be stored with the template for reference
+                            </small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="confirmSaveBtn" class="btn btn-primary"
+                            style="padding: 10px 24px; font-weight: 600;">Save Template</button>
+                        <button class="btn modal-close" style="padding: 10px 24px;">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- JSON Data Input Modal -->
+            <div id="jsonDataModal" class="modal"
+                style="display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+                <div class="modal-content"
+                    style="max-width: 700px; background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); max-height: 90vh; display: flex; flex-direction: column;">
+                    <div class="modal-header">
+                        <h2 style="margin: 0; font-size: 20px; color: #2d3748;">📋 Sample JSON Data</h2>
+                        <button class="modal-close"
+                            style="background: none; border: none; font-size: 28px; color: #718096; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div
+                            style="background: #edf2f7; border-left: 4px solid #4299e1; padding: 12px 16px; border-radius: 4px; margin-bottom: 16px;">
+                            <p style="margin: 0; color: #2d3748; font-size: 14px; line-height: 1.6;">
+                                <strong>💡 Tip:</strong> Enter sample JSON data to automatically extract available
+                                variables. Copy variables from the suggestions panel and paste them into your template.
+                            </p>
+                        </div>
+                        <textarea id="jsonDataInput"
+                            placeholder='{\n  "name": "John Doe",\n  "email": "john@example.com",\n  "company": {\n    "name": "Acme Corp"\n  },\n  "items": [\n    {"product": "Widget", "price": 29.99}\n  ]\n}'
+                            style="width: 100%; min-height: 350px; padding: 16px; border: 2px solid #e2e8f0; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 13px; resize: vertical; line-height: 1.5;"></textarea>
+                        <div id="jsonError"
+                            style="color: #e53e3e; font-size: 13px; margin-top: 12px; padding: 12px; background: #fff5f5; border-radius: 6px; border-left: 4px solid #e53e3e; display: none;">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="parseJsonBtn" class="btn btn-primary"
+                            style="padding: 10px 24px; font-weight: 600;">✨ Extract Variables</button>
+                        <button class="btn modal-close" style="padding: 10px 24px;">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Documentation View -->
             <div id="docs-view" class="view">
                 <header class="view-header">
@@ -642,41 +849,109 @@ Example:
                     </section>
                 </div>
             </div>
-        </main>
+    </div>
+    </div>
+
+    <!-- Group Modal -->
+    <div id="groupModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 id="groupModalTitle">Create Group</h2>
+                <button class="modal-close" onclick="document.getElementById('groupModal').style.display='none'"
+                    style="background: none; border: none; font-size: 28px; color: #718096; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748;">
+                        Group Name *
+                    </label>
+                    <input type="text" id="groupName" required
+                        style="width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px;"
+                        placeholder="e.g., Legal Documents">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748;">
+                        Description (Optional)
+                    </label>
+                    <textarea id="groupDescription" rows="3"
+                        style="width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; resize: vertical;"
+                        placeholder="Brief description of this group"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="saveGroupBtn" class="btn btn-primary">Save</button>
+                <button class="btn btn-secondary"
+                    onclick="document.getElementById('groupModal').style.display='none'">Cancel</button>
+            </div>
+        </div>
     </div>
 
     <!-- Toast Notification -->
     <div class="toast-container" id="toast-container"></div>
 
-    <!-- Upload Modal -->
-    <div class="modal-overlay" id="upload-modal" hidden>
-        <div class="modal">
+    <!-- Upload Template Modal -->
+    <div id="upload-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
-                <h2>Upload Template</h2>
-                <button class="btn-icon modal-close">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
+                <h2 style="margin: 0; font-size: 20px; color: #2d3748;">📤 Upload Template</h2>
+                <button class="modal-close" onclick="document.getElementById('upload-modal').style.display='none'"
+                    style="background: none; border: none; font-size: 28px; color: #718096; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="dropzone" id="modal-dropzone">
-                    <div class="dropzone-content">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="17 8 12 3 7 8"></polyline>
-                            <line x1="12" y1="3" x2="12" y2="15"></line>
-                        </svg>
-                        <p>Drag & drop your DOCX template here</p>
-                        <span>or</span>
-                        <button class="btn btn-secondary" id="modal-browse-btn">Browse Files</button>
-                        <input type="file" id="modal-file-input" accept=".docx" hidden>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748;">Template Name
+                        *</label>
+                    <input type="text" id="upload-name" class="form-control" required
+                        placeholder="e.g., Invoice Template"
+                        style="width: 100%; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748;">Template File
+                        *</label>
+                    <input type="file" id="upload-file" class="form-control" accept=".docx" required
+                        style="width: 100%; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                    <small style="display: block; margin-top: 4px; color: #718096; font-size: 13px;">Only .docx files
+                        are supported</small>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748;">Groups
+                        (Optional)</label>
+                    <div class="autocomplete-wrapper" style="position: relative;">
+                        <!-- Selected groups as tags -->
+                        <div id="selectedGroupsTags"
+                            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-height: 24px;">
+                            <!-- Selected group tags will appear here -->
+                        </div>
+                        <input type="text" id="templateGroupInput" class="form-control"
+                            placeholder="Type to search and add groups..." autocomplete="off"
+                            style="width: 100%; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                        <input type="hidden" id="templateGroupSelect">
+                        <div id="groupDropdown" class="autocomplete-dropdown" style="display: none;">
+                            <!-- Groups will be populated here -->
+                        </div>
                     </div>
                 </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748;">Tags
+                        (Optional)</label>
+                    <input type="text" id="upload-tags" class="form-control"
+                        placeholder="e.g., legal, contract, invoice (comma-separated)"
+                        style="width: 100%; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                    <small style="display: block; margin-top: 4px; color: #718096; font-size: 13px;">Comma-separated
+                        tags for better organization</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="confirmUploadBtn" class="btn btn-primary">Upload</button>
+                <button class="btn btn-secondary"
+                    onclick="document.getElementById('upload-modal').style.display='none'">Cancel</button>
             </div>
         </div>
     </div>
+
 
     <!-- Create User Modal -->
     <div class="modal" id="createUserModal" style="display: none;">
@@ -747,10 +1022,17 @@ Example:
         <p id="loading-text">Generating document...</p>
     </div>
 
+    <!-- OnlyOffice Document Server API -->
+    <script type="text/javascript" src="http://192.168.1.8:8080/web-apps/apps/api/documents/api.js"></script>
+
+    <!-- App Scripts -->
     <script src="auth.js"></script>
     <script src="users.js"></script>
     <script src="audit.js"></script>
     <script src="renderHistory.js"></script>
+    <script src="editor.js"></script>
+    <script src="groups.js"></script>
+    <script src="app.js"></script>
     <script>
         // Initialize authentication
         document.addEventListener('DOMContentLoaded', () => {
@@ -767,21 +1049,6 @@ Example:
             if (user) {
                 document.getElementById('username').textContent = user.username;
                 document.getElementById('userRole').textContent = user.role.toUpperCase();
-
-                // Show User Management menu for superadmin and manager
-                if (user.role === 'superadmin' || user.role === 'manager') {
-                    document.getElementById('usersMenuItem').style.display = 'flex';
-                }
-
-                // Show Audit Logs menu for superadmin only
-                if (user.role === 'superadmin') {
-                    document.getElementById('auditMenuItem').style.display = 'flex';
-                }
-
-                // Show Render History menu for superadmin and manager
-                if (user.role === 'superadmin' || user.role === 'manager') {
-                    document.getElementById('historyMenuItem').style.display = 'flex';
-                }
             }
 
             // Logout handler
@@ -790,7 +1057,71 @@ Example:
                     await auth.logout();
                 }
             });
+
+            // Create Template button handler
+            const createTemplateBtn = document.getElementById('createTemplateBtn');
+            if (createTemplateBtn) {
+                createTemplateBtn.addEventListener('click', () => {
+                    switchView('editor');
+                });
+            }
         });
+
+        // Function to update menu visibility based on role
+        function updateMenuVisibility() {
+            const user = auth.getUser();
+            if (!user) return;
+
+            const role = user.role;
+
+            // Show/hide Users menu (superadmin only)
+            const usersMenuItem = document.getElementById('usersMenuItem');
+            if (usersMenuItem) {
+                usersMenuItem.style.display = role === 'superadmin' ? 'flex' : 'none';
+            }
+
+            // Show/hide Groups menu (superadmin and manager)
+            const groupsMenuItem = document.querySelector('[data-view="groups"]');
+            if (groupsMenuItem) {
+                groupsMenuItem.style.display = (role === 'superadmin' || role === 'manager') ? 'flex' : 'none';
+            }
+
+            // Show/hide Audit menu (superadmin only)
+            const auditMenuItem = document.getElementById('auditMenuItem');
+            if (auditMenuItem) {
+                auditMenuItem.style.display = role === 'superadmin' ? 'flex' : 'none';
+            }
+
+            // Show/hide Render History menu (all authenticated users)
+            const renderHistoryMenuItem = document.getElementById('renderHistoryMenuItem');
+            if (renderHistoryMenuItem) {
+                renderHistoryMenuItem.style.display = 'flex';
+            }
+
+            // Show/hide Editor menu (superadmin and manager)
+            const editorMenuItem = document.getElementById('editorMenuItem');
+            if (editorMenuItem) {
+                editorMenuItem.style.display = (role === 'superadmin' || role === 'manager') ? 'flex' : 'none';
+            }
+
+            // Show/hide Create Template button (superadmin and manager)
+            const createTemplateBtn = document.getElementById('createTemplateBtn');
+            if (createTemplateBtn) {
+                createTemplateBtn.style.display = (role === 'superadmin' || role === 'manager') ? 'inline-flex' : 'none';
+            }
+
+            // Show/hide Upload Template button (superadmin and manager)
+            const uploadTemplateBtn = document.getElementById('upload-template-btn');
+            if (uploadTemplateBtn) {
+                uploadTemplateBtn.style.display = (role === 'superadmin' || role === 'manager') ? 'inline-flex' : 'none';
+            }
+        }
+
+        // Update menu visibility on auth changes
+        auth.onAuthChange(updateMenuVisibility);
+
+        // Also update immediately on page load
+        updateMenuVisibility();
     </script>
 
     <script src="app.js"></script>

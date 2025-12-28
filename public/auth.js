@@ -88,6 +88,7 @@ class AuthManager {
         localStorage.setItem('user', JSON.stringify(user));
 
         this.scheduleTokenRefresh();
+        this.triggerAuthChange(); // Notify listeners
     }
 
     /**
@@ -201,6 +202,25 @@ class AuthManager {
      */
     hasRole(...roles) {
         return this.user && roles.includes(this.user.role);
+    }
+
+    /**
+     * Register callback for auth changes
+     */
+    onAuthChange(callback) {
+        if (!this.authChangeCallbacks) {
+            this.authChangeCallbacks = [];
+        }
+        this.authChangeCallbacks.push(callback);
+    }
+
+    /**
+     * Trigger auth change callbacks
+     */
+    triggerAuthChange() {
+        if (this.authChangeCallbacks) {
+            this.authChangeCallbacks.forEach(cb => cb());
+        }
     }
 
     /**
