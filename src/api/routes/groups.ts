@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate, requireRole } from '../../auth/middleware.js';
 import groupService from '../../services/GroupService.js';
 import auditService from '../../services/AuditService.js';
-import logger from '../../utils/Logger.js';
+
 
 const router = Router();
 

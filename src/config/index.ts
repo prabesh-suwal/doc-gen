@@ -53,7 +53,7 @@ const config: Config = {
     enableNormalization: process.env.ENABLE_NORMALIZATION !== 'false',
     logLevel: process.env.LOG_LEVEL || 'info',
     server: {
-        baseUrl: process.env.BASE_URL || 'http://192.168.1.8:3000',
+        baseUrl: process.env.BASE_URL || `http://localhost:${process.env.PORT || '3000'}`,
     },
     database: {
         host: process.env.DB_HOST || 'localhost',
@@ -74,8 +74,8 @@ const config: Config = {
     },
     onlyOffice: {
         enabled: process.env.ONLYOFFICE_ENABLED === 'true' || true,
-        url: process.env.ONLYOFFICE_URL || 'http://192.168.1.8:8080',
-        callbackUrl: process.env.ONLYOFFICE_CALLBACK_URL || 'http://192.168.1.8:3000/api/editor/callback',
+        url: process.env.ONLYOFFICE_URL || 'http://localhost:8080',
+        callbackUrl: process.env.ONLYOFFICE_CALLBACK_URL || `http://localhost:${process.env.PORT || '3000'}/api/editor/callback`,
         jwtEnabled: process.env.ONLYOFFICE_JWT_ENABLED === 'true',
         jwtSecret: process.env.ONLYOFFICE_JWT_SECRET || '',
     },

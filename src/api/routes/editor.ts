@@ -17,6 +17,78 @@ const templateEngine = new TemplateEngine();
 const docxOutput = new DocxOutput();
 
 /**
+ * POST /api/editor/edit/:templateId
+ * Load existing template into editor for editing
+ */
+router.post('/edit/:templateId', authenticate, requireRole('superadmin', 'manager'), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { templateId } = req.params;
+
+        // Get template metadata
+        const template = await templateStore.getMetadata(templateId);
+
+        if (!template) {
+            res.status(404).json({ error: 'Template not found' });
+            return;
+        }
+
+        // Load template file
+        const { buffer } = await templateStore.get(templateId);
+
+        // Create OnlyOffice editing session with template content
+        const { documentId, filePath } = await onlyOfficeService.createBlankDocument();
+
+        // Write template content to the document file
+        const fs = await import('fs');
+        fs.writeFileSync(filePath, buffer);
+
+        // Extract sample data if exists (from metadata details)
+        const sampleData = (template as any).sampleData || null;
+        const tags = template.tags || [];
+
+        // Get groups assigned to this template
+        let groups: { id: string; name: string }[] = [];
+        try {
+            groups = await groupService.getTemplateGroups(templateId);
+        } catch (err) {
+            logger.warn(`Could not fetch groups for template ${templateId}:`, err);
+        }
+
+        // Audit log
+        await auditService.logAction({
+            userId: req.user!.userId,
+            username: req.user!.username,
+            action: 'editor_accessed',
+            resourceType: 'template',
+            resourceId: templateId,
+            details: {
+                templateName: template.originalName,
+                hasSampleData: !!sampleData,
+                documentId
+            },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+        });
+
+        logger.info(`Template loaded into editor: ${templateId} -> ${documentId} by ${req.user!.username}`);
+
+        res.json({
+            success: true,
+            documentId,
+            originalTemplateId: templateId, // Pass original template ID for update
+            editorUrl: `/editor?id=${documentId}`,
+            templateName: template.originalName,
+            sampleData,
+            tags,
+            groups
+        });
+    } catch (error) {
+        logger.error('Edit template error:', error);
+        next(error);
+    }
+});
+
+/**
  * POST /api/editor/create
  * Create a new blank document for editing
  * Admin and Manager only
@@ -148,7 +220,10 @@ router.post('/test/:documentId', authenticate, requireRole('superadmin', 'manage
             return;
         }
 
-        // Get the editing document
+        // Force save to get the latest content from OnlyOffice
+        await onlyOfficeService.forceSave(documentId);
+
+        // Get the editing document (now with latest content)
         const buffer = await onlyOfficeService.getDocument(documentId);
 
         // Load and render template
@@ -171,11 +246,12 @@ router.post('/test/:documentId', authenticate, requireRole('superadmin', 'manage
 /**
  * POST /api/editor/save/:documentId
  * Finalize and save the edited document as a template
+ * If originalTemplateId is provided, updates existing template; otherwise creates new
  */
 router.post('/save/:documentId', authenticate, requireRole('superadmin', 'manager'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { documentId } = req.params;
-        const { name, groupIds, tags, sampleData } = req.body;
+        const { name, groupIds, tags, sampleData, originalTemplateId } = req.body;
 
         if (!name || !name.trim()) {
             res.status(400).json({ error: 'Template name is required' });
@@ -188,29 +264,54 @@ router.post('/save/:documentId', authenticate, requireRole('superadmin', 'manage
             return;
         }
 
-        // Get the edited document
+        // Force save to get the latest content from OnlyOffice
+        // This triggers a callback from OnlyOffice with the current document state
+        await onlyOfficeService.forceSave(documentId);
+
+        // Get the edited document (now with latest content from OnlyOffice)
         const buffer = await onlyOfficeService.getDocument(documentId);
 
-        // Save as a template
         const templateName = name.trim().endsWith('.docx') ? name.trim() : `${name.trim()}.docx`;
-        const metadata = await templateStore.store(buffer, templateName, 'onlyoffice-editor', req.user!.userId, {
-            tags,
-            sampleData
-        });
+        let metadata;
+        let isUpdate = false;
 
+        // Check if we're updating an existing template
+        if (originalTemplateId) {
+            // Update existing template
+            metadata = await templateStore.update(originalTemplateId, buffer, req.user!.userId, {
+                name: templateName,
+                tags,
+                sampleData
+            });
 
-        // Assign groups using GroupService
+            if (!metadata) {
+                res.status(404).json({ error: 'Original template not found for update' });
+                return;
+            }
+
+            isUpdate = true;
+            logger.info(`Template updated from editor: ${metadata.id} (${templateName})`);
+        } else {
+            // Create new template
+            metadata = await templateStore.store(buffer, templateName, 'onlyoffice-editor', req.user!.userId, {
+                tags,
+                sampleData
+            });
+            logger.info(`Template created from editor: ${metadata.id} (${templateName})`);
+        }
+
+        // Handle group assignments
         if (groupIds && Array.isArray(groupIds) && groupIds.length > 0) {
+            // For updates, we might want to replace groups; for now, just assign
             await groupService.assignToTemplate(metadata.id, groupIds, req.user!.userId);
             logger.info(`Assigned ${groupIds.length} groups to template ${metadata.id}`);
-
         }
 
         // Audit log
         await auditService.logAction({
             userId: req.user!.userId,
             username: req.user!.username,
-            action: 'template_uploaded',
+            action: isUpdate ? 'template_updated' : 'template_uploaded',
             resourceType: 'template',
             resourceId: metadata.id,
             details: {
@@ -218,6 +319,8 @@ router.post('/save/:documentId', authenticate, requireRole('superadmin', 'manage
                 size: buffer.length,
                 source: 'onlyoffice-editor',
                 originalEditId: documentId,
+                originalTemplateId: originalTemplateId || null,
+                isUpdate,
                 groupIds,
                 tags,
                 hasSampleData: !!sampleData
@@ -229,10 +332,10 @@ router.post('/save/:documentId', authenticate, requireRole('superadmin', 'manage
         // Clean up editing document
         await onlyOfficeService.deleteDocument(documentId);
 
-        logger.info(`Template created from editor: ${metadata.id} (${templateName})`);
         res.json({
             success: true,
-            template: metadata
+            template: metadata,
+            isUpdate
         });
     } catch (error) {
         next(error);

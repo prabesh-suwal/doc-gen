@@ -31,6 +31,9 @@ export class OnlyOfficeService {
         const documentId = uuidv4();
         const filePath = path.join(this.editingPath, `${documentId}.docx`);
 
+        // Ensure the editing directory exists
+        await fs.mkdir(this.editingPath, { recursive: true });
+
         // Create a minimal blank DOCX file
         const blankContent = await this.generateBlankDocx();
         await fs.writeFile(filePath, blankContent);
@@ -145,6 +148,38 @@ export class OnlyOfficeService {
     async getDocument(documentId: string): Promise<Buffer> {
         const filePath = this.getDocumentPath(documentId);
         return await fs.readFile(filePath);
+    }
+
+    /**
+     * Force save the document (triggers OnlyOffice to send latest content via callback)
+     * This should be called before reading the document to ensure we get the latest version
+     */
+    async forceSave(documentId: string): Promise<boolean> {
+        try {
+            const commandUrl = `${config.onlyOffice.url}/coauthoring/CommandService.ashx`;
+
+            const response = await axios.post(commandUrl, {
+                c: 'forcesave',
+                key: documentId,
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                timeout: 10000,
+            });
+
+            logger.info(`Force save triggered for ${documentId}:`, response.data);
+
+            // Wait a bit for the callback to be processed
+            // OnlyOffice will call our callback endpoint with the latest document
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            return response.data?.error === 0;
+        } catch (error) {
+            logger.warn(`Force save failed for ${documentId}:`, error);
+            // Continue anyway - the user might want to save what we have
+            return false;
+        }
     }
 
     /**

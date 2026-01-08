@@ -36,6 +36,18 @@ export type AuditAction =
     | 'group_listed'
     | 'group_viewed'
     | 'group_toggled'
+    | 'group_template_assigned'
+    | 'group_template_removed'
+    // Renders
+    | 'render_success'
+    | 'render_failure'
+    | 'render_history_viewed'
+    | 'render_detail_viewed'
+    | 'render_downloaded'
+    // Editor
+    | 'editor_accessed'
+    | 'editor_document_created'
+    | 'editor_template_saved'
     ;
 
 export interface AuditLogEntry {

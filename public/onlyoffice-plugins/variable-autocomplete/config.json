@@ -1,0 +1,53 @@
+{
+    "name": "Variable Autocomplete",
+    "guid": "asc.{E6D2E70D-54EB-4B54-9F28-91DB2E7B9C21}",
+    "version": "1.0.0",
+    "baseUrl": "",
+    "minVersion": "6.0.0",
+    "group": {
+        "name": "Template",
+        "rank": 2
+    },
+    "variations": [
+        {
+            "description": "Provides autocomplete suggestions for template variables",
+            "url": "index.html",
+            "icons": [
+                "resources/icon.png",
+                "resources/icon-large.png"
+            ],
+            "icons2": [
+                {
+                    "100%": {
+                        "normal": "resources/icon.png"
+                    },
+                    "125%": {
+                        "normal": "resources/icon.png"
+                    },
+                    "150%": {
+                        "normal": "resources/icon.png"
+                    },
+                    "175%": {
+                        "normal": "resources/icon.png"
+                    },
+                    "200%": {
+                        "normal": "resources/icon.png"
+                    }
+                }
+            ],
+            "isViewer": false,
+            "EditorsSupport": [
+                "word"
+            ],
+            "isVisual": false,
+            "isModal": false,
+            "isInsideMode": true,
+            "initDataType": "none",
+            "initData": "",
+            "isSystem": true,
+            "events": [
+                "onInputHelp"
+            ]
+        }
+    ]
+}

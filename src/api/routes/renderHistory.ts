@@ -6,6 +6,7 @@
 import { Router, Request, Response } from 'express';
 import renderHistoryService from '../../services/RenderHistoryService.js';
 import { authenticate, requireRole } from '../../auth/middleware.js';
+import auditService from '../../services/AuditService.js';
 import logger from '../../utils/Logger.js';
 
 const router = Router();
@@ -25,6 +26,21 @@ router.get('/', async (req: Request, res: Response) => {
         const result = await renderHistoryService.getUserRenderHistory(req.user!.userId, {
             limit,
             offset,
+        });
+
+        // Audit log
+        await auditService.logAction({
+            userId: req.user!.userId,
+            username: req.user!.username,
+            action: 'render_history_viewed',
+            resourceType: 'render',
+            details: {
+                count: result.total,
+                limit,
+                offset
+            },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
         });
 
         res.json({
@@ -98,6 +114,21 @@ router.get('/:id', async (req: Request, res: Response) => {
             });
             return;
         }
+
+        // Audit log
+        await auditService.logAction({
+            userId: req.user!.userId,
+            username: req.user!.username,
+            action: 'render_detail_viewed',
+            resourceType: 'render',
+            resourceId: id,
+            details: {
+                templateId: render.template_id,
+                status: render.status
+            },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+        });
 
         res.json({ render });
     } catch (error) {

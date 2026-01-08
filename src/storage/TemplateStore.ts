@@ -15,6 +15,7 @@ export interface TemplateMetadata {
     updatedAt: string;
     source?: string;
     tags?: string[];
+    sampleData?: any;
 }
 
 /**
@@ -100,8 +101,7 @@ export class TemplateStore {
             const result = await database.query(
                 `SELECT id, name as "originalName", original_filename as filename, 
                         file_path as "filePath", file_size as size, 
-                        created_at as "createdAt", updated_at as "updatedAt", 
-                        group_name as "group", tags, sample_data as "sampleData"
+                        created_at as "createdAt", updated_at as "updatedAt", tags, sample_data as "sampleData"
                  FROM templates 
                  WHERE id = $1`,
                 [id]
@@ -145,7 +145,7 @@ export class TemplateStore {
             const result = await database.query(
                 `SELECT id, name as "originalName", original_filename as filename, 
                         file_size as size, created_at as "createdAt", 
-                        updated_at as "updatedAt", group_name as "group", 
+                        updated_at as "updatedAt", 
                         tags, sample_data as "sampleData"
                  FROM templates 
                  WHERE id = $1`,
@@ -164,7 +164,8 @@ export class TemplateStore {
                 size: row.size,
                 createdAt: row.createdAt,
                 updatedAt: row.updatedAt,
-                tags: row.tags || []
+                tags: row.tags || [],
+                sampleData: row.sampleData || null
             };
         } catch (error) {
             logger.error(`Failed to get template metadata ${id}:`, error);
@@ -259,26 +260,78 @@ export class TemplateStore {
     }
 
     /**
-     * Update template metadata
+     * Update an existing template (both file and database)
      */
-    async updateMetadata(id: string, updates: Partial<TemplateMetadata>): Promise<TemplateMetadata | null> {
-        // if (!this.index) await this.loadIndex();
+    async update(
+        id: string,
+        buffer: Buffer,
+        updatedBy: string,
+        options?: {
+            name?: string;
+            tags?: string[];
+            sampleData?: any;
+        }
+    ): Promise<TemplateMetadata | null> {
+        // Get existing template metadata
+        const existing = await this.getMetadata(id);
+        if (!existing) {
+            return null;
+        }
 
-        // const metadata = this.index!.templates[id];
-        // if (!metadata) {
-        //     return null;
-        // }
+        // Get file path from database
+        const result = await database.query(
+            'SELECT file_path FROM templates WHERE id = $1',
+            [id]
+        );
 
-        // const updated = {
-        //     ...metadata,
-        //     ...updates,
-        //     id, // Ensure ID cannot be changed
-        //     updatedAt: new Date().toISOString(),
-        // };
+        if (result.rows.length === 0) {
+            return null;
+        }
 
-        // this.index!.templates[id] = updated;
-        // await this.saveIndex();
+        const filePath = result.rows[0].file_path;
 
+        // Overwrite the file
+        await fs.writeFile(filePath, buffer);
+
+        // Update database
+        const newName = options?.name || existing.originalName;
+        const tagsArray = options?.tags || existing.tags || [];
+        const sampleDataJson = options?.sampleData ? JSON.stringify(options.sampleData) : null;
+
+        await database.query(
+            `UPDATE templates 
+             SET name = $1, 
+                 original_filename = $2, 
+                 file_size = $3, 
+                 tags = $4, 
+                 sample_data = $5, 
+                 updated_at = NOW(),
+                 uploaded_by = $6
+             WHERE id = $7`,
+            [newName, newName, buffer.length, tagsArray, sampleDataJson, updatedBy, id]
+        );
+
+        const metadata: TemplateMetadata = {
+            id,
+            filename: existing.filename,
+            originalName: newName,
+            size: buffer.length,
+            createdAt: existing.createdAt,
+            updatedAt: new Date().toISOString(),
+            source: existing.source,
+            tags: tagsArray,
+            sampleData: options?.sampleData,
+        };
+
+        logger.info(`Template updated: ${id} (${newName})`);
+        return metadata;
+    }
+
+    /**
+     * Update template metadata only (without file)
+     */
+    async updateMetadata(_id: string, _updates: Partial<TemplateMetadata>): Promise<TemplateMetadata | null> {
+        // Not implemented - use update() instead for full updates
         return null;
     }
 }

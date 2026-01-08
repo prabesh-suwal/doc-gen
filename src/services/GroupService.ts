@@ -212,7 +212,7 @@ class GroupService {
 
             // Then, add new assignments
             if (groupIds.length > 0) {
-                const values = groupIds.map((groupId, index) =>
+                const values = groupIds.map((_groupId, index) =>
                     `($1, $${index + 2}, $${groupIds.length + 2})`
                 ).join(', ');
 

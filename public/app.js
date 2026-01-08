@@ -537,20 +537,31 @@ function formatFileSize(bytes) {
 }
 
 // ============================================
-// Template Selection
-// ============================================
+// Store templates data for sample JSON lookup
+let selectTemplatesData = [];
 
 async function loadTemplatesForSelect() {
     try {
-        const response = await fetch(`${API_BASE}/api/templates`);
+        const response = await auth.fetch(`${API_BASE}/api/templates`);
         const data = await response.json();
 
         if (data.success && data.templates.length > 0) {
+            selectTemplatesData = data.templates;
             renderTemplateSelectList(data.templates);
+
+            // If a template was pre-selected (from "Use Template" button), pre-fill sample JSON
+            if (state.selectedTemplateId) {
+                const selectedTemplate = selectTemplatesData.find(t => t.id === state.selectedTemplateId);
+                if (selectedTemplate && selectedTemplate.sampleData) {
+                    elements.jsonEditor.value = JSON.stringify(selectedTemplate.sampleData, null, 2);
+                    elements.jsonError.hidden = true;
+                }
+            }
         } else {
             elements.templateSelectList.innerHTML = '<p class="empty-state">No templates saved yet. Upload a template first.</p>';
         }
     } catch (error) {
+        console.error('Failed to load templates:', error);
         elements.templateSelectList.innerHTML = '<p class="empty-state">Failed to load templates</p>';
     }
 }
@@ -580,6 +591,13 @@ function renderTemplateSelectList(templates) {
             elements.templateSelectList.querySelectorAll('.template-select-item').forEach(i => {
                 i.classList.toggle('selected', i.dataset.id === state.selectedTemplateId);
             });
+
+            // Pre-fill sample JSON if available
+            const selectedTemplate = selectTemplatesData.find(t => t.id === state.selectedTemplateId);
+            if (selectedTemplate && selectedTemplate.sampleData) {
+                elements.jsonEditor.value = JSON.stringify(selectedTemplate.sampleData, null, 2);
+                elements.jsonError.hidden = true;
+            }
         });
     });
 }
@@ -724,63 +742,132 @@ async function loadTemplates() {
     try {
         const response = await auth.fetch(`${API_BASE}/api/templates`);
         if (!response.ok) throw new Error('Failed to load templates');
-
         const data = await response.json();
-        state.templates = data.templates;
 
-        renderTemplatesGrid(state.templates); // Assuming renderTemplatesGrid is the correct function to call here
-        if (state.templates.length > 0) {
-            elements.emptyTemplates.hidden = true;
-            elements.templatesGrid.hidden = false;
-        } else {
-            elements.emptyTemplates.hidden = false;
-            elements.templatesGrid.hidden = true;
+        // Store templates for filtering
+        allTemplates = data.templates || [];
+
+        // Populate group filter dropdown
+        populateGroupFilter();
+
+        // Setup filters once
+        if (!window.templateFiltersInitialized) {
+            setupTemplateFilters();
+            window.templateFiltersInitialized = true;
         }
+
+        // Render with current filters
+        filterAndSortTemplates();
+
     } catch (error) {
         console.error('Error loading templates:', error);
-        elements.templateSelectList.innerHTML = `
-            <div class="no-templates">
-                <p>Failed to load templates</p>
-            </div>
-        `;
+        const tbody = document.getElementById('templatesTableBody');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="padding: 32px; text-align: center; color: #e53e3e;">
+                        Failed to load templates. Please try again.
+                    </td>
+                </tr>
+            `;
+        }
     }
 }
 
+async function populateGroupFilter() {
+    try {
+        const response = await auth.fetch(`${API_BASE}/api/groups/active`);
+        if (response.ok) {
+            const groups = await response.json();
+            const select = document.getElementById('templateGroupFilter');
+            if (select) {
+                select.innerHTML = '<option value="">All Groups</option>' +
+                    groups.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
+            }
+        }
+    } catch (error) {
+        console.log('Could not load groups for filter:', error);
+    }
+}
+
+// Template filtering and sorting
+let allTemplates = [];
+let templateSortColumn = 'createdAt';
+let templateSortDirection = 'desc';
+
 function renderTemplatesGrid(templates) {
-    elements.templatesGrid.innerHTML = templates.map(t => `
-    <div class="template-card" data-id="${t.id}">
-      <div class="template-card-header">
-        <div class="file-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-          </svg>
-        </div>
-        <div class="template-card-info">
-          <div class="template-card-name">${escapeHtml(t.filename)}</div>
-          <div class="template-card-meta">${formatFileSize(t.size)} • ${formatDate(t.createdAt)}</div>
-        </div>
-      </div>
-      <div class="template-card-actions">
-        <button class="btn btn-secondary use-btn" data-id="${t.id}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-          </svg>
-          Use
-        </button>
-        <button class="btn btn-ghost delete-btn" data-id="${t.id}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-          </svg>
-          Delete
-        </button>
-      </div>
-    </div>
-  `).join('');
+    const tbody = document.getElementById('templatesTableBody');
+    if (!tbody) return;
+
+    if (!templates || templates.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="padding: 32px; text-align: center; color: var(--text-muted);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="48" height="48" style="margin: 0 auto 16px; display: block;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            <p>No templates available</p>
+            <p style="font-size: 13px; margin-top: 4px;">Upload a template to get started</p>
+        </td></tr>`;
+        return;
+    }
+
+    const userRole = auth.getUser()?.role;
+    const canManageTemplates = userRole === 'superadmin' || userRole === 'manager';
+
+    tbody.innerHTML = templates.map(t => {
+        const groupsHtml = t.groups && t.groups.length > 0
+            ? t.groups.map(g => `<span class="badge badge-primary">${escapeHtml(g.name)}</span>`).join(' ')
+            : '<span style="color: var(--text-muted);">—</span>';
+
+        const tagsHtml = t.tags && t.tags.length > 0
+            ? t.tags.map(tag => `<span class="badge badge-secondary">${escapeHtml(tag)}</span>`).join(' ')
+            : '<span style="color: var(--text-muted);">—</span>';
+
+        return `<tr data-id="${t.id}">
+            <td><div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 36px; height: 36px; background: rgba(99, 102, 241, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="color: var(--accent-primary);">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                </div>
+                <span style="font-weight: 500;">${escapeHtml(t.filename)}</span>
+            </div></td>
+            <td>${groupsHtml}</td>
+            <td>${tagsHtml}</td>
+            <td style="white-space: nowrap;">${formatFileSize(t.size)}</td>
+            <td style="white-space: nowrap;">${formatDate(t.createdAt)}</td>
+            <td><div style="display: flex; gap: 6px; justify-content: flex-end;">
+                <button class="btn-icon use-btn" data-id="${t.id}" title="Use Template">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                </button>
+                ${canManageTemplates ? `<button class="btn-icon edit-btn" data-id="${t.id}" title="Edit Template">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                </button>` : ''}
+                <button class="btn-icon download-btn" data-id="${t.id}" data-filename="${escapeHtml(t.filename)}" title="Download">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                </button>
+                ${canManageTemplates ? `<button class="btn-icon btn-danger delete-btn" data-id="${t.id}" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>` : ''}
+            </div></td>
+        </tr>`;
+    }).join('');
 
     // Add event listeners
-    elements.templatesGrid.querySelectorAll('.use-btn').forEach(btn => {
+    document.querySelectorAll('#templatesTableBody .use-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             state.selectedTemplateId = btn.dataset.id;
             state.mode = 'select';
@@ -789,9 +876,118 @@ function renderTemplatesGrid(templates) {
         });
     });
 
-    elements.templatesGrid.querySelectorAll('.delete-btn').forEach(btn => {
+    document.querySelectorAll('#templatesTableBody .edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => editTemplate(btn.dataset.id));
+    });
+
+    document.querySelectorAll('#templatesTableBody .download-btn').forEach(btn => {
+        btn.addEventListener('click', () => downloadTemplate(btn.dataset.id, btn.dataset.filename));
+    });
+
+    document.querySelectorAll('#templatesTableBody .delete-btn').forEach(btn => {
         btn.addEventListener('click', () => deleteTemplate(btn.dataset.id));
     });
+}
+
+function filterAndSortTemplates() {
+    const searchTerm = document.getElementById('templateSearch')?.value?.toLowerCase() || '';
+    const groupFilter = document.getElementById('templateGroupFilter')?.value || '';
+    const dateFrom = document.getElementById('templateDateFrom')?.value || '';
+    const dateTo = document.getElementById('templateDateTo')?.value || '';
+
+    let filtered = allTemplates.filter(t => {
+        // Search filter
+        if (searchTerm && !t.filename.toLowerCase().includes(searchTerm)) {
+            return false;
+        }
+        // Group filter
+        if (groupFilter && (!t.groups || !t.groups.some(g => g.id === groupFilter))) {
+            return false;
+        }
+        // Date from filter
+        if (dateFrom && new Date(t.createdAt) < new Date(dateFrom)) {
+            return false;
+        }
+        // Date to filter
+        if (dateTo && new Date(t.createdAt) > new Date(dateTo + 'T23:59:59')) {
+            return false;
+        }
+        return true;
+    });
+
+    // Sort
+    filtered.sort((a, b) => {
+        let valA, valB;
+        switch (templateSortColumn) {
+            case 'name':
+                valA = a.filename.toLowerCase();
+                valB = b.filename.toLowerCase();
+                break;
+            case 'size':
+                valA = a.size;
+                valB = b.size;
+                break;
+            case 'createdAt':
+            default:
+                valA = new Date(a.createdAt);
+                valB = new Date(b.createdAt);
+        }
+        if (valA < valB) return templateSortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return templateSortDirection === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    renderTemplatesGrid(filtered);
+}
+
+function setupTemplateFilters() {
+    // Search input
+    document.getElementById('templateSearch')?.addEventListener('input', debounce(filterAndSortTemplates, 300));
+
+    // Group filter
+    document.getElementById('templateGroupFilter')?.addEventListener('change', filterAndSortTemplates);
+
+    // Date filters
+    document.getElementById('templateDateFrom')?.addEventListener('change', filterAndSortTemplates);
+    document.getElementById('templateDateTo')?.addEventListener('change', filterAndSortTemplates);
+
+    // Clear button
+    document.getElementById('clearTemplateFiltersBtn')?.addEventListener('click', () => {
+        document.getElementById('templateSearch').value = '';
+        document.getElementById('templateGroupFilter').value = '';
+        document.getElementById('templateDateFrom').value = '';
+        document.getElementById('templateDateTo').value = '';
+        filterAndSortTemplates();
+    });
+
+    // Sortable columns
+    document.querySelectorAll('#templatesTable th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const column = th.dataset.sort;
+            if (templateSortColumn === column) {
+                templateSortDirection = templateSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                templateSortColumn = column;
+                templateSortDirection = 'asc';
+            }
+            // Update sort icons
+            document.querySelectorAll('#templatesTable th.sortable').forEach(h => {
+                h.querySelector('.sort-icon').textContent = h.dataset.sort === templateSortColumn
+                    ? (templateSortDirection === 'asc' ? '↑' : '↓')
+                    : '↕';
+            });
+            filterAndSortTemplates();
+        });
+    });
+}
+
+// Simple debounce function
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
 }
 
 async function deleteTemplate(id) {
@@ -865,6 +1061,76 @@ if (elements.modalDropzone && elements.modalFileInput) {
         e.stopPropagation();
         elements.modalFileInput.click();
     });
+}
+
+/**
+ * Edit template in OnlyOffice editor
+ */
+async function editTemplate(templateId) {
+    try {
+        showLoading('Loading template into editor...');
+
+        const response = await auth.fetch(`/api/editor/edit/${templateId}`, {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            console.log('Edit template response:', data);
+            console.log('Sample data received:', data.sampleData);
+
+            // Store document ID and sample data for editor to use
+            window.editingDocumentId = data.documentId;
+            window.editingSampleData = data.sampleData;
+            window.editingTemplateName = data.templateName;
+            window.editingOriginalTemplateId = data.originalTemplateId; // For updating existing template
+            window.editingGroups = data.groups || []; // Groups assigned to template
+            window.editingTags = data.tags || []; // Tags assigned to template
+
+            console.log('Window globals set - docId:', window.editingDocumentId);
+            console.log('Window globals set - sampleData:', window.editingSampleData);
+            console.log('Window globals set - originalTemplateId:', window.editingOriginalTemplateId);
+            console.log('Window globals set - groups:', window.editingGroups);
+            console.log('Window globals set - tags:', window.editingTags);
+
+            hideLoading();
+
+            // Switch to editor view - this will trigger initializeEditor
+            switchView('editor');
+
+            showToast('Template loaded in editor', 'success');
+        } else {
+            hideLoading();
+            showToast(data.error || 'Failed to load template', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('Edit template error:', error);
+        showToast('Failed to load template', 'error');
+    }
+}
+
+/**
+ * Download template
+ */
+async function downloadTemplate(templateId, filename) {
+    showLoading('Downloading template...');
+    try {
+        const response = await auth.fetch(`${API_BASE}/api/templates/${templateId}/download`);
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to download template');
+        }
+
+        const blob = await response.blob();
+        downloadBlob(blob, filename);
+        showToast('Template downloaded successfully!', 'success');
+    } catch (error) {
+        showToast(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 // New function to handle upload with group and tags

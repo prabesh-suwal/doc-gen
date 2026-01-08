@@ -301,12 +301,13 @@ Example:
             <div id="templates-view" class="view">
                 <header class="view-header">
                     <div>
-                        <h1>Saved Templates</h1>
-                        <p class="subtitle">Manage your uploaded document templates</p>
+                        <h1>Templates</h1>
+                        <p class="subtitle">Manage your document templates</p>
                     </div>
                     <div style="display: flex; gap: 12px;">
                         <button class="btn btn-primary" id="createTemplateBtn" style="display: none;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"
+                                height="16">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                 <polyline points="14 2 14 8 20 8"></polyline>
                                 <line x1="12" y1="11" x2="12" y2="17"></line>
@@ -315,7 +316,8 @@ Example:
                             ✨ Create Template
                         </button>
                         <button class="btn btn-primary" id="upload-template-btn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"
+                                height="16">
                                 <line x1="12" y1="5" x2="12" y2="19"></line>
                                 <line x1="5" y1="12" x2="19" y2="12"></line>
                             </svg>
@@ -324,17 +326,49 @@ Example:
                     </div>
                 </header>
 
-                <div class="templates-grid" id="templates-grid">
-                    <!-- Templates will be loaded here -->
+                <!-- Filter Bar -->
+                <div class="card" style="margin-top: 24px; padding: 16px;">
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <input type="text" id="templateSearch" placeholder="Search templates..."
+                                style="width: 100%; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                        </div>
+                        <select id="templateGroupFilter"
+                            style="padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px; min-width: 150px;">
+                            <option value="">All Groups</option>
+                        </select>
+                        <input type="date" id="templateDateFrom" title="From date"
+                            style="padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                        <input type="date" id="templateDateTo" title="To date"
+                            style="padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                        <button class="btn btn-secondary" id="clearTemplateFiltersBtn">Clear</button>
+                    </div>
                 </div>
 
-                <div class="empty-state-large" id="empty-templates" hidden>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                    </svg>
-                    <h3>No templates yet</h3>
-                    <p>Upload your first DOCX template to get started</p>
-                    <button class="btn btn-primary" id="upload-first-btn">Upload Template</button>
+                <!-- Templates Table -->
+                <div class="card" style="margin-top: 16px; overflow-x: auto;">
+                    <table class="data-table" id="templatesTable">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-sort="name" style="cursor: pointer;">Name <span
+                                        class="sort-icon">↕</span></th>
+                                <th>Groups</th>
+                                <th>Tags</th>
+                                <th class="sortable" data-sort="size" style="cursor: pointer;">Size <span
+                                        class="sort-icon">↕</span></th>
+                                <th class="sortable" data-sort="createdAt" style="cursor: pointer;">Created <span
+                                        class="sort-icon">↕</span></th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="templatesTableBody">
+                            <tr>
+                                <td colspan="6" style="padding: 32px; text-align: center; color: #718096;">
+                                    Loading templates...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -571,28 +605,137 @@ Example:
 
                 <div style="display: flex; gap: 16px; height: calc(100vh - 140px);">
                     <!-- OnlyOffice Editor -->
-                    <div id="editorContainer"
+                    <div id="editorWrapper"
                         style="flex: 1; min-height: 600px; position: relative; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <div id="editorPlaceholder"
-                            style="display: flex; align-items: center; justify-content: center; height: 100%; color: #718096;">
-                            <div style="text-align: center;">
-                                <div style="font-size: 64px; margin-bottom: 16px;">📝</div>
-                                <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Loading OnlyOffice
-                                    Editor...</div>
-                                <div style="font-size: 14px; opacity: 0.8;">Please wait while we initialize the editor
+                        <div id="editorContainer" style="height: 100%;">
+                            <div id="editorPlaceholder"
+                                style="display: flex; align-items: center; justify-content: center; height: 100%; color: #718096;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 64px; margin-bottom: 16px;">📝</div>
+                                    <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Loading
+                                        OnlyOffice
+                                        Editor...</div>
+                                    <div style="font-size: 14px; opacity: 0.8;">Please wait while we initialize the
+                                        editor
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Variable Suggestions Panel -->
+                    <!-- Template Helper Panel -->
                     <div id="variableSuggestions"
-                        style="width: 300px; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow-y: auto; display: none;">
-                        <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #2d3748;">Available Variables</h3>
-                        <div id="variablesList" style="display: flex; flex-direction: column; gap: 8px;">
-                            <p style="color: #718096; font-size: 14px; text-align: center; padding: 24px 0;">
-                                Click "📋 Insert JSON" to add sample data
-                            </p>
+                        style="width: 360px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; display: none; max-height: calc(100vh - 180px); display: flex; flex-direction: column;">
+
+                        <!-- Panel Header -->
+                        <div
+                            style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); background: var(--bg-tertiary);">
+                            <h3 style="margin: 0; font-size: 14px; color: var(--text-primary); font-weight: 600;">
+                                🛠️ Template Helper
+                            </h3>
+                            <p style="margin: 4px 0 0 0; font-size: 11px; color: var(--text-muted);">Press Ctrl+Space
+                                for quick insert</p>
+                        </div>
+
+                        <!-- Tab Navigation -->
+                        <div id="suggestionTabs"
+                            style="display: flex; border-bottom: 1px solid var(--border-color); background: var(--bg-secondary);">
+                            <button class="suggestion-tab active" data-tab="variables"
+                                style="flex: 1; padding: 10px 8px; border: none; background: transparent; color: var(--text-primary); font-size: 11px; cursor: pointer; border-bottom: 2px solid var(--accent-primary);">📝
+                                Variables</button>
+                            <button class="suggestion-tab" data-tab="formatters"
+                                style="flex: 1; padding: 10px 8px; border: none; background: transparent; color: var(--text-muted); font-size: 11px; cursor: pointer; border-bottom: 2px solid transparent;">🎨
+                                Format</button>
+                            <button class="suggestion-tab" data-tab="conditions"
+                                style="flex: 1; padding: 10px 8px; border: none; background: transparent; color: var(--text-muted); font-size: 11px; cursor: pointer; border-bottom: 2px solid transparent;">🔀
+                                If/Else</button>
+                            <button class="suggestion-tab" data-tab="loops"
+                                style="flex: 1; padding: 10px 8px; border: none; background: transparent; color: var(--text-muted); font-size: 11px; cursor: pointer; border-bottom: 2px solid transparent;">🔁
+                                Loops</button>
+                            <button class="suggestion-tab" data-tab="cheatsheet"
+                                style="flex: 1; padding: 10px 8px; border: none; background: transparent; color: var(--text-muted); font-size: 11px; cursor: pointer; border-bottom: 2px solid transparent;">📖
+                                Help</button>
+                        </div>
+
+                        <!-- Tab Contents -->
+                        <div style="flex: 1; overflow-y: auto;">
+                            <!-- Variables Tab -->
+                            <div id="tab-variables" class="tab-content" style="padding: 12px;">
+                                <input type="text" id="variableSearchInput" placeholder="🔍 Search variables..."
+                                    style="width: 100%; padding: 8px 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 12px; margin-bottom: 10px;"
+                                    oninput="filterVariables(this.value)">
+                                <div id="variablesList" style="display: flex; flex-direction: column; gap: 6px;">
+                                    <p
+                                        style="color: var(--text-muted); font-size: 12px; text-align: center; padding: 20px 0;">
+                                        Load JSON data to see variables
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Formatters Tab -->
+                            <div id="tab-formatters" class="tab-content" style="padding: 12px; display: none;">
+                                <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 10px 0;">Add formatters
+                                    after variable: <code
+                                        style="color: var(--accent-primary);">${field|formatter}</code></p>
+                                <div id="formattersList" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                            </div>
+
+                            <!-- Conditions Tab -->
+                            <div id="tab-conditions" class="tab-content" style="padding: 12px; display: none;">
+                                <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 10px 0;">Show content
+                                    based on conditions</p>
+                                <div id="conditionsList" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                            </div>
+
+                            <!-- Loops Tab -->
+                            <div id="tab-loops" class="tab-content" style="padding: 12px; display: none;">
+                                <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 10px 0;">Repeat content
+                                    for each item in array</p>
+                                <div id="loopsList" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                            </div>
+
+                            <!-- Cheat Sheet Tab -->
+                            <div id="tab-cheatsheet" class="tab-content" style="padding: 12px; display: none;">
+                                <div style="font-size: 11px; color: var(--text-secondary); line-height: 1.8;">
+                                    <div
+                                        style="margin-bottom: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: 6px;">
+                                        <strong style="color: var(--text-primary);">📝 Insert Value</strong><br>
+                                        <code style="color: var(--accent-primary);">${field.name}</code>
+                                    </div>
+                                    <div
+                                        style="margin-bottom: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: 6px;">
+                                        <strong style="color: var(--text-primary);">🎨 Format Number</strong><br>
+                                        <code style="color: var(--accent-primary);">${amount|currency}</code><br>
+                                        <code style="color: var(--accent-primary);">${rate|percentage}</code>
+                                    </div>
+                                    <div
+                                        style="margin-bottom: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: 6px;">
+                                        <strong style="color: var(--text-primary);">📅 Format Date</strong><br>
+                                        <code style="color: var(--accent-primary);">${date|date:DD MMM YYYY}</code><br>
+                                        <code style="color: var(--accent-primary);">${date|date:YYYY-MM-DD}</code>
+                                    </div>
+                                    <div
+                                        style="margin-bottom: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: 6px;">
+                                        <strong style="color: var(--text-primary);">✅ Condition</strong><br>
+                                        <code style="color: var(--accent-primary);">${#if value > 100}</code><br>
+                                        <span style="padding-left: 12px;">...content if true...</span><br>
+                                        <code style="color: var(--accent-primary);">${#else}</code><br>
+                                        <span style="padding-left: 12px;">...content if false...</span><br>
+                                        <code style="color: var(--accent-primary);">${/if}</code>
+                                    </div>
+                                    <div
+                                        style="margin-bottom: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: 6px;">
+                                        <strong style="color: var(--text-primary);">🔁 Loop (Repeat Rows)</strong><br>
+                                        <code style="color: var(--accent-primary);">${#each items}</code><br>
+                                        <span style="padding-left: 12px;">${name} ${price}</span><br>
+                                        <code style="color: var(--accent-primary);">${/each}</code>
+                                    </div>
+                                    <div style="padding: 10px; background: var(--bg-tertiary); border-radius: 6px;">
+                                        <strong style="color: var(--text-primary);">💡 Multiple Formatters</strong><br>
+                                        <code style="color: var(--accent-primary);">${name|bold|upper}</code>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -710,7 +853,28 @@ Example:
                 </div>
             </div>
 
-            <!-- Documentation View -->
+            <!-- Quick Insert Variable Modal (Ctrl+Space) -->
+            <div id="quickInsertModal"
+                style="display: none; position: fixed; z-index: 3000; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 400px; max-height: 500px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); overflow: hidden;">
+                <div
+                    style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 18px;">⚡</span>
+                    <input type="text" id="quickInsertSearch" placeholder="Search variables... (Ctrl+Space to close)"
+                        style="flex: 1; padding: 8px 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 14px;"
+                        autocomplete="off">
+                </div>
+                <div id="quickInsertList" style="max-height: 400px; overflow-y: auto; padding: 8px;">
+                    <p style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 24px;">
+                        Load JSON data to see variables
+                    </p>
+                </div>
+                <div
+                    style="padding: 8px 12px; border-top: 1px solid var(--border-color); background: var(--bg-tertiary); font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between;">
+                    <span>↑↓ Navigate</span>
+                    <span>Enter to copy</span>
+                    <span>Esc to close</span>
+                </div>
+            </div>
             <div id="docs-view" class="view">
                 <header class="view-header">
                     <div>
@@ -1022,8 +1186,25 @@ Example:
         <p id="loading-text">Generating document...</p>
     </div>
 
-    <!-- OnlyOffice Document Server API -->
-    <script type="text/javascript" src="http://192.168.1.8:8080/web-apps/apps/api/documents/api.js"></script>
+    <!-- OnlyOffice Document Server API - Loaded dynamically from config -->
+    <script>
+        // Load OnlyOffice script dynamically from config
+        (async function loadOnlyOfficeScript() {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                if (config.onlyOffice && config.onlyOffice.enabled && config.onlyOffice.url) {
+                    const script = document.createElement('script');
+                    script.type = 'text/javascript';
+                    script.src = `${config.onlyOffice.url}/web-apps/apps/api/documents/api.js`;
+                    script.onerror = () => console.warn('OnlyOffice API script failed to load');
+                    document.head.appendChild(script);
+                }
+            } catch (error) {
+                console.warn('Failed to load OnlyOffice config:', error);
+            }
+        })();
+    </script>
 
     <!-- App Scripts -->
     <script src="auth.js"></script>
@@ -1032,7 +1213,7 @@ Example:
     <script src="renderHistory.js"></script>
     <script src="editor.js"></script>
     <script src="groups.js"></script>
-    <script src="app.js"></script>
+
     <script>
         // Initialize authentication
         document.addEventListener('DOMContentLoaded', () => {

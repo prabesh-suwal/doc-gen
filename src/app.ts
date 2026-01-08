@@ -11,6 +11,7 @@ import groupsRouter from './api/routes/groups.js';
 import { errorHandler, notFoundHandler } from './api/middleware/errorHandler.js';
 import logger from './utils/Logger.js';
 import database from './database/connection.js';
+import config from './config/index.js';
 
 // Get the public directory path
 const publicPath = path.join(process.cwd(), 'public');
@@ -59,6 +60,16 @@ export function createApp(): Express {
         }
 
         res.json(health);
+    });
+
+    // Public config endpoint (exposes frontend-safe configuration)
+    app.get('/api/config', (_req, res) => {
+        res.json({
+            onlyOffice: {
+                enabled: config.onlyOffice.enabled,
+                url: config.onlyOffice.url,
+            },
+        });
     });
 
     // API routes
