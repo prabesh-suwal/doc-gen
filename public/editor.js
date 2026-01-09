@@ -1607,3 +1607,30 @@ function fallbackCopy(text) {
         document.body.removeChild(textArea);
     }
 }
+
+// Template Helper Toggle
+document.addEventListener('DOMContentLoaded', () => {
+    // Use event delegation or check if elements exist (e.g. if editor view is active)
+    // But since this is a single page app logic, we can attach listener to body or check on demand.
+    // However, the button is in the DOM from start (in index.html).
+    // Let's attach safely.
+    
+    // We can also attach via onclick in HTML, but cleaner here.
+    const body = document.body;
+    body.addEventListener('click', (e) => {
+        const btn = e.target.closest('#toggleHelperBtn');
+        if (btn) {
+            const panel = document.getElementById('variableSuggestions');
+            if (panel) {
+                panel.classList.toggle('collapsed');
+                
+                // Adjust title tooltip
+                if (panel.classList.contains('collapsed')) {
+                    btn.title = "Expand Helper";
+                } else {
+                    btn.title = "Collapse Helper";
+                }
+            }
+        }
+    });
+});

@@ -431,6 +431,76 @@ function switchView(viewName) {
     }
 }
 
+
+// ============================================
+// Navigation Guard (Back Button & Exit Warning)
+// ============================================
+
+function setupNavigationGuard() {
+    // 1. Browser Back Button Interception
+    // Push a dummy state so we can intercept the back button
+    history.pushState({ page: 'app' }, document.title, window.location.href);
+
+    window.addEventListener('popstate', (event) => {
+        // When user presses back, the state is popped.
+        // We warn them, and if they cancel, we push state again to stay forward.
+        const confirmLeave = confirm("⚠️ Are you sure you want to leave?\n\nIf you have unsaved changes (like in the editor), they will be lost.");
+
+        if (!confirmLeave) {
+            // User chose to stay
+            // Push state again to restore the "forward" history we just popped
+            history.pushState({ page: 'app' }, document.title, window.location.href);
+        } else {
+            // User chose to leave
+            // We allow the back navigation (which already happened in history stack)
+            // But if we want to actually go BACK to the previous page (e.g. login/google), 
+            // we might need to go back again if we had multiple pushed states.
+            // For simple "leaving site", we can let it be or redirect.
+            // However, browser history manipulation is tricky. 
+            // Usually, standard 'back' behavior is desired if confirmed.
+            // The popstate event happens *after* the history change.
+            history.back();
+        }
+    });
+
+    // 2. Tab Close / Refresh Warning
+    window.addEventListener('beforeunload', (e) => {
+        // Check if we assume there are unsaved changes. 
+        // For this user request "If user pressed back button... give user warning",
+        // we'll apply it globally for safety or mostly when in editor.
+        // Modern browsers usually ignore the custom message string.
+
+        // Only warn if authenticated to avoid annoying login page users
+        if (auth && auth.isAuthenticated()) {
+            e.preventDefault();
+            e.returnValue = ''; // Standard for Chrome/Firefox
+        }
+    });
+}
+
+// Initialize navigation guard
+setupNavigationGuard();
+
+
+// ============================================
+// Sidebar Toggle
+// ============================================
+
+const sidebar = document.querySelector('.sidebar');
+const sidebarToggle = document.getElementById('sidebar-toggle');
+
+if (sidebarToggle) {
+    // Check local storage
+    if (localStorage.getItem('sidebarCollapsed') === 'true') {
+        sidebar.classList.add('collapsed');
+    }
+
+    sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+    });
+}
+
 elements.navItems.forEach(item => {
     item.addEventListener('click', (e) => {
         e.preventDefault();

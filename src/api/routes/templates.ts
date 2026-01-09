@@ -109,6 +109,10 @@ router.get('/', authenticate, async (_req: Request, res: Response, next: NextFun
     try {
         const templates = await templateStore.list();
 
+        if (templates.length > 0) {
+            logger.debug(`First template group data: ${JSON.stringify(templates[0].groups)}`);
+        }
+
         // Audit log
         await auditService.logAction({
             userId: _req.user!.userId,

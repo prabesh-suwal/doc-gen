@@ -80,6 +80,7 @@ class RenderHistoryService {
             durationMs?: number;
             errorMessage?: string;
             errorStack?: string;
+            templateName?: string;
         }
     ): Promise<void> {
         try {
@@ -89,8 +90,9 @@ class RenderHistoryService {
                     file_size = $2,
                     duration_ms = $3,
                     error_message = $4,
-                    error_stack = $5
-                WHERE id = $6
+                    error_stack = $5,
+                    template_name = COALESCE($6, template_name)
+                WHERE id = $7
             `;
 
             await database.query(query, [
@@ -99,6 +101,7 @@ class RenderHistoryService {
                 data.durationMs || null,
                 data.errorMessage || null,
                 data.errorStack || null,
+                data.templateName || null,
                 id,
             ]);
 

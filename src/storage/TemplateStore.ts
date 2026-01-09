@@ -15,6 +15,7 @@ export interface TemplateMetadata {
     updatedAt: string;
     source?: string;
     tags?: string[];
+    groups?: { id: string; name: string }[];
     sampleData?: any;
 }
 
@@ -220,12 +221,20 @@ export class TemplateStore {
     async list(): Promise<TemplateMetadata[]> {
         try {
             const result = await database.query(
-                `SELECT id, name as "originalName", original_filename as filename, 
-                        file_size as size, created_at as "createdAt", 
-                        updated_at as "updatedAt", 
-                        tags, sample_data as "sampleData"
-                 FROM templates 
-                 ORDER BY created_at DESC`
+                `SELECT t.id, t.name as "originalName", t.original_filename as filename, 
+                        t.file_size as size, t.created_at as "createdAt", 
+                        t.updated_at as "updatedAt", 
+                        t.tags, t.sample_data as "sampleData",
+                        COALESCE(
+                            json_agg(json_build_object('id', g.id, 'name', g.name)) 
+                            FILTER (WHERE g.id IS NOT NULL), 
+                            '[]'
+                        ) as groups
+                 FROM templates t
+                 LEFT JOIN template_groups tg ON t.id = tg.template_id
+                 LEFT JOIN groups g ON tg.group_id = g.id
+                 GROUP BY t.id
+                 ORDER BY t.created_at DESC`
             );
 
             return result.rows.map(row => ({
@@ -235,7 +244,8 @@ export class TemplateStore {
                 size: row.size,
                 createdAt: row.createdAt,
                 updatedAt: row.updatedAt,
-                tags: row.tags || []
+                tags: row.tags || [],
+                groups: row.groups || []
             }));
         } catch (error) {
             logger.error('Failed to list templates from database:', error);

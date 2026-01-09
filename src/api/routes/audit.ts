@@ -25,6 +25,18 @@ router.get('/', async (req: Request, res: Response) => {
         const action = req.query.action as any;
         const userId = req.query.userId as string;
 
+        // Log access to audit logs
+        await auditService.logAction({
+            userId: req.user!.userId,
+            username: req.user!.username,
+            action: 'audit_logs_viewed',
+            resourceType: 'system',
+            resourceId: 'audit_log',
+            details: { limit, offset, filterAction: action, filterUserId: userId },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+        });
+
         const result = await auditService.getAuditLogs({
             limit,
             offset,
@@ -51,8 +63,20 @@ router.get('/', async (req: Request, res: Response) => {
  * GET /api/audit-logs/stats
  * Get audit log statistics
  */
-router.get('/stats', async (_req: Request, res: Response) => {
+router.get('/stats', async (req: Request, res: Response) => {
     try {
+        // Log access to audit stats
+        await auditService.logAction({
+            userId: req.user!.userId,
+            username: req.user!.username,
+            action: 'audit_stats_viewed',
+            resourceType: 'system',
+            resourceId: 'audit_stats',
+            details: {},
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+        });
+
         const stats = await auditService.getActionStatistics();
 
         res.json({

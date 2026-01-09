@@ -33,7 +33,11 @@ router.post('/', authenticate, requireRole('superadmin'), async (req: Request, r
         });
 
         res.status(201).json({ success: true, group });
-    } catch (error) {
+    } catch (error: any) {
+        if (error.code === '23505') {
+            res.status(409).json({ error: 'Group name already exists' });
+            return;
+        }
         next(error);
     }
 });
@@ -44,6 +48,19 @@ router.post('/', authenticate, requireRole('superadmin'), async (req: Request, r
 router.get('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const includeInactive = req.query.includeInactive !== 'false';
+
+        // Log access
+        await auditService.logAction({
+            userId: req.user!.userId,
+            username: req.user!.username,
+            action: 'group_listed',
+            resourceType: 'group',
+            resourceId: undefined, // Fix: 'all_groups' is not a valid UUID
+            details: { includeInactive },
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+        });
+
         const groups = await groupService.list(includeInactive);
 
         // Add template count to each group

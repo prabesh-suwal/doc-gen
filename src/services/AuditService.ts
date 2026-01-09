@@ -48,6 +48,9 @@ export type AuditAction =
     | 'editor_accessed'
     | 'editor_document_created'
     | 'editor_template_saved'
+    // Audit
+    | 'audit_logs_viewed'
+    | 'audit_stats_viewed'
     ;
 
 export interface AuditLogEntry {

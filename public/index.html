@@ -10,7 +10,14 @@
 </head>
 
 <body>
-    <div class="app-container">
+    <!-- Initial Loading Overlay -->
+    <div id="app-loading">
+        <div class="spinner"></div>
+        <p>Loading application...</p>
+    </div>
+
+    <!-- Main App (Hidden by default) -->
+    <div class="app-container" style="display: none;">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo">
@@ -25,6 +32,12 @@
                 </div>
                 <span class="logo-text">DocGen</span>
             </div>
+
+            <button id="sidebar-toggle" class="sidebar-toggle" title="Toggle Sidebar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
 
             <nav class="nav-menu">
                 <a href="#" class="nav-item active" data-view="render">
@@ -630,8 +643,16 @@ Example:
                         <!-- Panel Header -->
                         <div
                             style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); background: var(--bg-tertiary);">
-                            <h3 style="margin: 0; font-size: 14px; color: var(--text-primary); font-weight: 600;">
-                                🛠️ Template Helper
+                            <h3
+                                style="margin: 0; font-size: 14px; color: var(--text-primary); font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+                                <span class="helper-title-text">🛠️ Template Helper</span>
+                                <button id="toggleHelperBtn" class="btn-icon" title="Toggle Helper"
+                                    style="padding: 2px; height: 24px; width: 24px;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        width="16" height="16">
+                                        <path d="M9 18l6-6-6-6"></path>
+                                    </svg>
+                                </button>
                             </h3>
                             <p style="margin: 4px 0 0 0; font-size: 11px; color: var(--text-muted);">Press Ctrl+Space
                                 for quick insert</p>
@@ -1221,6 +1242,10 @@ Example:
             if (!auth.requireAuth()) {
                 return;
             }
+
+            // Auth successful, show app
+            document.getElementById('app-loading').style.display = 'none';
+            document.querySelector('.app-container').style.display = 'flex';
 
             // Block API users from web UI
             auth.blockApiUsers();
